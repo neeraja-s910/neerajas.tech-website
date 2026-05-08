@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -489,7 +490,7 @@ footer{
     <li><a href="#experience">Experience</a></li>
     <li><a href="#skills">Skills</a></li>
     <li><a href="#project">Project</a></li>
-    <li><a href="#certs">Certificates</a></li>
+    <li><a href="#certs">Certs</a></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
   <a href="mailto:neerajashivakumar561@gmail.com" class="nav-cta">Hire Me ↗</a>
@@ -839,26 +840,6 @@ footer{
   </div>
 </section>
 
-<!-- VIEW COUNTER -->
-<section id="view-counter-section" style="background:var(--paper2);padding:2.5rem clamp(1.25rem,5vw,4.5rem);border-top:1px solid var(--border)">
-  <div style="max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.5rem">
-    <div>
-      <div class="eyebrow" style="margin-bottom:.4rem">Live Tracker</div>
-      <div style="font-family:var(--fd);font-size:clamp(1.4rem,3vw,2rem);letter-spacing:-.025em;color:var(--ink);line-height:1.2">Page <em style="font-style:italic;color:var(--accent)">Views</em></div>
-      <div style="font-size:.82rem;color:var(--ink3);margin-top:.3rem;font-weight:300">Tracked locally in your browser</div>
-    </div>
-    <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap">
-      <!-- Total Views -->
-      <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:1.4rem 2rem;text-align:center;box-shadow:var(--shadow);min-width:140px">
-        <div style="font-size:.63rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:.4rem">Total Views</div>
-        <div id="vc-total" style="font-family:var(--fd);font-size:2.8rem;color:var(--accent);line-height:1;letter-spacing:-.03em">—</div>
-      </div>
-
-
-    </div>
-  </div>
-</section>
-
 <!-- FOOTER -->
 <footer>
   <div class="footer-left">S. Neeraja · SEO & Automation</div>
@@ -886,9 +867,9 @@ function handleSubmit(e){
 /* ── LOTTIE ── */
 const L=lottie;
 // Hero: analytics/SEO
-L.loadAnimation({container:document.getElementById('lot-hero'),renderer:'svg',loop:true,autoplay:true,path:'https://assets1.lottiefiles.com/packages/lf20_hk6e5vak.json'});
+L.loadAnimation({container:document.getElementById('lot-hero'),renderer:'svg',loop:true,autoplay:true,path:'https://assets5.lottiefiles.com/packages/lf20_V9t630.json'});
 // About: working on laptop
-L.loadAnimation({container:document.getElementById('lot-about'),renderer:'svg',loop:true,autoplay:true,path:'https://assets4.lottiefiles.com/packages/lf20_ystsffqy.json'});
+L.loadAnimation({container:document.getElementById('lot-about'),renderer:'svg',loop:true,autoplay:true,path:'https://assets2.lottiefiles.com/packages/lf20_w51pcehl.json'});
 // Impact icons - small inline
 ['imp1','imp2','imp3','imp4'].forEach((id,i)=>{
   const paths=['https://assets4.lottiefiles.com/packages/lf20_qp1q7mct.json','https://assets9.lottiefiles.com/packages/lf20_fcfjwiyb.json','https://assets5.lottiefiles.com/packages/lf20_u25cckyh.json','https://assets10.lottiefiles.com/packages/lf20_touohxv0.json'];
@@ -905,40 +886,7 @@ L.loadAnimation({container:document.getElementById('lot-proj'),renderer:'svg',lo
 ['cl1','cl2','cl3','cl4','cl5'].forEach(id=>L.loadAnimation({container:document.getElementById(id),renderer:'svg',loop:true,autoplay:true,path:'https://assets10.lottiefiles.com/packages/lf20_touohxv0.json'}));
 L.loadAnimation({container:document.getElementById('cl6'),renderer:'svg',loop:true,autoplay:true,path:'https://assets2.lottiefiles.com/packages/lf20_yom6uvgj.json'});
 // Contact
-L.loadAnimation({container:document.getElementById('lot-ct'),renderer:'svg',loop:true,autoplay:true,path:'https://assets9.lottiefiles.com/packages/lf20_u4yrau84.json'});
-</script>
-
-<script>
-/* ── VIEW COUNTER ── */
-(function(){
-  var TOTAL_KEY = 'neeraja_pf_views';
-  var total = parseInt(localStorage.getItem(TOTAL_KEY) || '0', 10) + 1;
-  localStorage.setItem(TOTAL_KEY, total);
-
-  function animateCount(el, target){
-    var startTime = null;
-    var duration = 900;
-    function step(ts){
-      if(!startTime) startTime = ts;
-      var progress = Math.min((ts - startTime) / duration, 1);
-      var eased = 1 - Math.pow(1 - progress, 3);
-      el.textContent = Math.round(eased * target);
-      if(progress < 1) requestAnimationFrame(step);
-      else el.textContent = target;
-    }
-    requestAnimationFrame(step);
-  }
-
-  var rendered = false;
-  var vcSection = document.getElementById('view-counter-section');
-  var vcObs = new IntersectionObserver(function(entries){
-    if(entries[0].isIntersecting && !rendered){
-      rendered = true;
-      animateCount(document.getElementById('vc-total'), total);
-    }
-  }, {threshold: 0.2});
-  if(vcSection) vcObs.observe(vcSection);
-})();
+L.loadAnimation({container:document.getElementById('lot-ct'),renderer:'svg',loop:true,autoplay:true,path:'https://assets5.lottiefiles.com/packages/lf20_u25cckyh.json'});
 </script>
 </body>
 </html>
