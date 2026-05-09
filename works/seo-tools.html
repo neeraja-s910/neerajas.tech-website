@@ -37,7 +37,7 @@ nav{
   background:rgba(15,13,26,.92);backdrop-filter:blur(20px);
   border-bottom:1px solid var(--border-dark);
 }
-.nav-logo{display:flex;flex-direction:column}
+.nav-logo{display:flex;flex-direction:row;align-items:center;gap:10px}
 .nav-logo .nav-first{color:rgba(255,255,255,.45);font-size:.78rem;font-family:var(--fb);font-weight:500;letter-spacing:.12em;text-transform:uppercase}
 .nav-logo .nav-last{color:var(--accent-mid);font-family:var(--fd);font-weight:400;font-style:italic;font-size:1.2rem;line-height:1.1}
 .nav-links{display:flex;gap:2rem;list-style:none}
@@ -319,8 +319,11 @@ nav{
 <!-- NAV -->
 <nav>
   <a href="../index.html" class="nav-logo">
-    <span class="nav-first">S. Neeraja</span>
-    <span class="nav-last">Portfolio</span>
+    <img src="../favicon.svg" width="32" height="32" alt="N" style="border-radius:7px;flex-shrink:0">
+    <span style="display:flex;flex-direction:column">
+      <span class="nav-first">S. Neeraja</span>
+      <span class="nav-last">Portfolio</span>
+    </span>
   </a>
   <ul class="nav-links">
     <li><a href="../index.html#about">About</a></li>
