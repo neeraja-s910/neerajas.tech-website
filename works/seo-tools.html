@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Works · S. Neeraja — SEO & Automation Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#18120E; --ink2:#4A3F38; --ink3:#9C8F87; --ink4:#C5BAB4;
+  --paper:#FDFAF6; --paper2:#F7F2EC; --paper3:#EFE8DF; --white:#FFFFFF;
+  --accent:#BF5B3A; --accent-lt:#F5E8E2; --accent-mid:#E8A48A;
+  --teal:#3A7D7B; --teal-lt:#E0F0EF;
+  /* Dark hero palette */
+  --dark:#0F0D1A; --dark2:#16132A; --dark3:#1E1A35; --dark4:#252041;
+  --neon:#BF5B3A; --neon2:#E8A48A;
+  --border-dark:rgba(255,255,255,.07);
+  --border:rgba(24,18,14,.09);
+  --shadow:0 1px 3px rgba(24,18,14,.06),0 4px 16px rgba(24,18,14,.06);
+  --shadow-lg:0 8px 32px rgba(24,18,14,.10),0 2px 8px rgba(24,18,14,.06);
+  --fd:'DM Serif Display',Georgia,serif; --fb:'Sora',sans-serif;
+  --r:14px; --rl:22px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--fb);font-size:16px;line-height:1.7;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+
+/* ─── NAV (light, matches rest of site) ─── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:400;height:62px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 clamp(1.25rem,5vw,4.5rem);
+  background:rgba(15,13,26,.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border-dark);
+}
+.nav-logo{display:flex;flex-direction:column}
+.nav-logo .nav-first{color:rgba(255,255,255,.45);font-size:.78rem;font-family:var(--fb);font-weight:500;letter-spacing:.12em;text-transform:uppercase}
+.nav-logo .nav-last{color:var(--accent-mid);font-family:var(--fd);font-weight:400;font-style:italic;font-size:1.2rem;line-height:1.1}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{font-size:.72rem;font-weight:500;color:rgba(255,255,255,.4);letter-spacing:.1em;text-transform:uppercase;padding:2px 0;border-bottom:1.5px solid transparent;transition:color .2s,border-color .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent-mid);border-color:var(--accent-mid)}
+.nav-cta{background:var(--accent);color:#fff;padding:8px 20px;border-radius:100px;font-size:.74rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;transition:all .25s}
+.nav-cta:hover{background:#a34830;transform:translateY(-1px)}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
+.nav-hamburger span{display:block;width:22px;height:2px;background:#fff;border-radius:2px}
+.mobile-menu{display:none;position:fixed;inset:0;z-index:300;background:var(--dark);flex-direction:column;align-items:center;justify-content:center;gap:2.5rem}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-family:var(--fd);font-size:2rem;color:#fff;transition:color .2s}
+.mobile-menu a:hover{color:var(--accent-mid)}
+.mobile-menu .m-close{position:absolute;top:1.5rem;right:1.5rem;font-size:1.5rem;cursor:pointer;color:rgba(255,255,255,.4)}
+
+/* ─── DARK HERO ─── */
+.hero{
+  min-height:100svh;
+  background:var(--dark);
+  display:grid;grid-template-columns:1fr 1fr;
+  align-items:center;gap:3rem;
+  padding:62px clamp(1.5rem,6vw,5rem) 0;
+  position:relative;overflow:hidden;
+}
+/* Background glow blobs */
+.hero-glow{position:absolute;pointer-events:none;inset:0;z-index:0}
+.g1{position:absolute;width:560px;height:560px;border-radius:50%;background:radial-gradient(circle,rgba(191,91,58,.18) 0%,transparent 65%);top:-120px;left:-80px}
+.g2{position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(58,125,123,.12) 0%,transparent 65%);bottom:60px;right:-80px}
+.g3{position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(232,164,138,.08) 0%,transparent 65%);top:55%;left:42%}
+
+/* Grid dots overlay */
+.hero::before{
+  content:'';position:absolute;inset:0;z-index:0;
+  background-image:radial-gradient(rgba(255,255,255,.04) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+
+.hero-l{
+  position:relative;z-index:1;
+  padding:clamp(3rem,6vw,5rem) 0;
+  opacity:0;animation:fadeUp .8s .1s forwards;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(191,91,58,.12);border:1px solid rgba(191,91,58,.3);
+  padding:5px 15px;border-radius:100px;
+  font-size:.68rem;font-weight:700;color:var(--accent-mid);
+  letter-spacing:.1em;text-transform:uppercase;margin-bottom:2rem;
+}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-mid);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.hero-title{
+  font-family:var(--fd);
+  font-size:clamp(2.8rem,5.5vw,4.8rem);
+  font-weight:400;line-height:1.04;letter-spacing:-.035em;
+  color:#fff;margin-bottom:1.5rem;
+}
+.hero-title .hl{
+  display:block;
+  background:linear-gradient(110deg,var(--accent-mid),#f0c8a0,var(--accent-mid));
+  background-size:200% auto;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:gradShift 4s linear infinite;
+  font-style:italic;
+}
+@keyframes gradShift{from{background-position:0% center}to{background-position:200% center}}
+
+.hero-desc{
+  font-size:clamp(.88rem,1.5vw,.98rem);
+  color:rgba(255,255,255,.5);line-height:1.9;max-width:440px;
+  font-weight:300;margin-bottom:2.25rem;
+}
+.hero-actions{display:flex;gap:.875rem;flex-wrap:wrap}
+.btn-hero-primary{
+  display:inline-flex;align-items:center;gap:9px;
+  background:var(--accent);color:#fff;
+  padding:13px 26px;border-radius:100px;
+  font-size:.82rem;font-weight:600;letter-spacing:.03em;
+  transition:all .25s;
+}
+.btn-hero-primary:hover{background:#a34830;transform:translateY(-2px);box-shadow:0 10px 32px rgba(191,91,58,.4)}
+.btn-hero-secondary{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);
+  padding:13px 26px;border-radius:100px;
+  font-size:.82rem;font-weight:500;transition:all .25s;
+}
+.btn-hero-secondary:hover{border-color:rgba(255,255,255,.35);color:#fff;transform:translateY(-2px)}
+
+.hero-stats{display:flex;gap:2rem;margin-top:2.5rem;flex-wrap:wrap}
+.h-stat{}
+.h-stat-num{font-family:var(--fd);font-size:1.8rem;color:var(--accent-mid);line-height:1;font-style:italic}
+.h-stat-lbl{font-size:.67rem;color:rgba(255,255,255,.35);letter-spacing:.07em;text-transform:uppercase;font-weight:500;margin-top:2px}
+
+/* ─── HERO MOCKUP ─── */
+.hero-r{
+  position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:center;
+  padding:clamp(2rem,4vw,3rem) 0;
+  opacity:0;animation:fadeUp .9s .3s forwards;
+}
+
+.mockup{
+  width:100%;max-width:480px;
+  background:#141222;border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;overflow:hidden;
+  box-shadow:0 24px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.04);
+}
+.m-titlebar{
+  display:flex;align-items:center;gap:.7rem;
+  padding:.75rem 1rem;background:#0E0C1C;border-bottom:1px solid rgba(255,255,255,.06);
+}
+.m-dots{display:flex;gap:5px}
+.m-dot{width:10px;height:10px;border-radius:50%}
+.m-dot.r{background:#FF5F57}.m-dot.y{background:#FFBD2E}.m-dot.g{background:#28C840}
+.m-title-txt{font-size:.72rem;color:rgba(255,255,255,.3);font-weight:500;flex:1;text-align:center}
+.m-status{
+  font-size:.63rem;font-weight:700;padding:2px 9px;border-radius:100px;
+  background:rgba(93,189,138,.12);color:#5DBD8A;border:1px solid rgba(93,189,138,.2);
+}
+
+.m-body{padding:1.1rem}
+.m-progress-row{display:flex;align-items:center;gap:.75rem;margin-bottom:1.1rem}
+.m-prog-label{font-size:.7rem;color:rgba(255,255,255,.4);white-space:nowrap}
+.m-prog-bar{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:100px;overflow:hidden}
+.m-prog-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--accent),var(--accent-mid));width:0%;transition:width 1s ease}
+.m-prog-pct{font-size:.7rem;color:var(--accent-mid);font-weight:600;min-width:32px;text-align:right}
+
+.m-table-head{
+  display:grid;grid-template-columns:2fr 1fr 1fr 1fr;
+  gap:.5rem;padding:.4rem .5rem;margin-bottom:.4rem;
+}
+.m-th{font-size:.6rem;font-weight:700;color:rgba(255,255,255,.25);letter-spacing:.08em;text-transform:uppercase}
+
+.m-row{
+  display:grid;grid-template-columns:2fr 1fr 1fr 1fr;
+  gap:.5rem;padding:.45rem .5rem;border-radius:7px;margin-bottom:3px;
+  transition:background .2s;
+}
+.m-row:hover{background:rgba(255,255,255,.03)}
+.m-bar{height:9px;border-radius:100px;align-self:center}
+.m-bar.url{background:rgba(255,255,255,.12)}
+.m-bar.ok{background:rgba(93,189,138,.55)}
+.m-bar.warn{background:rgba(232,164,138,.6)}
+.m-bar.bad{background:rgba(192,57,43,.55)}
+.m-bar.url.w40{width:40%}.m-bar.url.w60{width:60%}.m-bar.url.w75{width:75%}.m-bar.url.w50{width:50%}
+
+.m-divider{height:1px;background:rgba(255,255,255,.05);margin:.85rem 0}
+
+.m-serp-label{font-size:.6rem;font-weight:700;color:rgba(255,255,255,.2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem}
+.m-serp-title{font-size:.78rem;color:#8AB4F8;font-weight:600;margin-bottom:.15rem}
+.m-serp-url{font-size:.67rem;color:#5A9E6A;margin-bottom:.4rem}
+.m-serp-desc{font-size:.67rem;color:rgba(255,255,255,.35);line-height:1.5;margin-bottom:.7rem}
+
+.m-metric{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem}
+.m-metric-badge{
+  font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:100px;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:4px;
+}
+.m-metric-badge.ok{background:rgba(93,189,138,.12);color:#5DBD8A;border:1px solid rgba(93,189,138,.2)}
+.m-metric-badge.warn{background:rgba(232,164,138,.1);color:var(--accent-mid);border:1px solid rgba(232,164,138,.2)}
+.m-metric-bar-outer{flex:1;height:3px;background:rgba(255,255,255,.08);border-radius:100px;overflow:hidden}
+.m-metric-bar-fill{height:100%;border-radius:100px}
+.m-metric-bar-fill.ok{background:#5DBD8A}
+.m-metric-bar-fill.warn{background:var(--accent-mid)}
+.m-metric-pct{font-size:.62rem;color:rgba(255,255,255,.3);min-width:28px;text-align:right}
+
+/* ─── TOOLS GRID SECTION ─── */
+.tools-section{
+  background:var(--paper);
+  padding:clamp(4rem,8vw,7rem) clamp(1.5rem,6vw,5rem);
+}
+.section-eyebrow{
+  display:inline-flex;align-items:center;gap:10px;
+  font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);
+  margin-bottom:.9rem;
+}
+.section-eyebrow::before{content:'';width:22px;height:1.5px;background:var(--accent);flex-shrink:0}
+.section-title{
+  font-family:var(--fd);font-size:clamp(2rem,4vw,3rem);
+  font-weight:400;line-height:1.1;letter-spacing:-.025em;color:var(--ink);margin-bottom:.75rem;
+}
+.section-title em{font-style:italic;color:var(--accent)}
+.section-sub{font-size:.93rem;color:var(--ink2);max-width:480px;line-height:1.9;margin-bottom:3rem;font-weight:300}
+
+.tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem}
+
+.tool-card{
+  background:var(--white);border:1px solid var(--border);border-radius:20px;
+  padding:2rem;transition:all .3s;overflow:hidden;position:relative;
+  display:flex;flex-direction:column;gap:1.1rem;
+}
+.tool-card::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-mid));
+  transform:scaleX(0);transform-origin:left;transition:transform .35s ease;
+}
+.tool-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg);border-color:rgba(191,91,58,.15)}
+.tool-card:hover::after{transform:scaleX(1)}
+.tool-card.coming{opacity:.75;cursor:default}
+.tool-card.coming:hover{transform:none;box-shadow:none;border-color:var(--border)}
+.tool-card.coming::after{display:none}
+
+.tc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.tc-icon-wrap{
+  width:52px;height:52px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.4rem;flex-shrink:0;
+}
+.ic-or{background:var(--accent-lt);border:1px solid rgba(191,91,58,.15)}
+.ic-te{background:var(--teal-lt);border:1px solid rgba(58,125,123,.15)}
+.ic-go{background:#F5EDD8;border:1px solid rgba(168,131,58,.15)}
+.ic-pu{background:#F0ECF8;border:1px solid rgba(120,80,180,.15)}
+
+.tc-pill{
+  font-size:.62rem;font-weight:700;padding:3px 10px;border-radius:100px;
+  letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;
+}
+.tc-pill.live{background:rgba(93,189,138,.1);color:#2E8B57;border:1px solid rgba(93,189,138,.2)}
+.tc-pill.soon{background:var(--paper3);color:var(--ink4);border:1px solid var(--border)}
+
+.tc-name{font-family:var(--fd);font-size:1.3rem;letter-spacing:-.02em;color:var(--ink);line-height:1.2}
+.tc-desc{font-size:.84rem;color:var(--ink2);line-height:1.75;font-weight:300;flex:1}
+.tc-tags{display:flex;flex-wrap:wrap;gap:5px}
+.tc-tag{font-size:.65rem;padding:3px 9px;border-radius:100px;background:var(--paper2);color:var(--ink3);border:1px solid var(--border);font-weight:500}
+.tc-link{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:.8rem;font-weight:600;color:var(--accent);
+  padding:10px 20px;border-radius:100px;
+  border:1.5px solid rgba(191,91,58,.25);
+  transition:all .25s;align-self:flex-start;
+  background:var(--accent-lt);
+}
+.tc-link:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tc-link-dis{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:.8rem;font-weight:600;color:var(--ink4);
+  padding:10px 20px;border-radius:100px;
+  border:1.5px solid var(--border);align-self:flex-start;
+  cursor:not-allowed;
+}
+
+/* ─── FOOTER ─── */
+.footer-dark{
+  background:var(--dark);
+  padding:2rem clamp(1.5rem,6vw,5rem);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.footer-left{font-family:var(--fd);font-size:1rem;font-style:italic;color:rgba(255,255,255,.3)}
+.footer-right{font-size:.72rem;color:rgba(255,255,255,.25);font-weight:400}
+.footer-right a{color:var(--accent-mid);transition:color .2s}
+.footer-right a:hover{color:#fff}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
+.rv{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.rv.vis{opacity:1;transform:translateY(0)}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:960px){
+  .hero{grid-template-columns:1fr;padding-bottom:3rem;min-height:auto;padding-top:80px}
+  .hero-r{display:none}
+  .hero-l{padding:2rem 0}
+}
+@media(max-width:900px){
+  .nav-links,.nav-cta{display:none}
+  .nav-hamburger{display:flex}
+}
+@media(max-width:600px){
+  .tools-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="../index.html" class="nav-logo">
+    <span class="nav-first">S. Neeraja</span>
+    <span class="nav-last">Portfolio</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="../index.html#about">About</a></li>
+    <li><a href="../index.html#experience">Experience</a></li>
+    <li><a href="../index.html#skills">Skills</a></li>
+    <li><a href="seo-tools.html" class="active">Works</a></li>
+    <li><a href="../index.html#certs">Certifications</a></li>
+    <li><a href="../index.html#contact">Contact</a></li>
+  </ul>
+  <a href="../index.html#contact" class="nav-cta">Hire Me</a>
+  <div class="nav-hamburger" onclick="document.getElementById('mm').classList.toggle('open')">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mm">
+  <span class="m-close" onclick="document.getElementById('mm').classList.remove('open')">✕</span>
+  <a href="../index.html#about">About</a>
+  <a href="../index.html#experience">Experience</a>
+  <a href="../index.html#skills">Skills</a>
+  <a href="seo-tools.html">Works</a>
+  <a href="../index.html#certs">Certifications</a>
+  <a href="../index.html#contact">Contact</a>
+</div>
+
+<!-- ─── HERO ─── -->
+<section class="hero">
+  <div class="hero-glow"><div class="g1"></div><div class="g2"></div><div class="g3"></div></div>
+
+  <!-- Left -->
+  <div class="hero-l">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      SEO Automation Lab
+    </div>
+    <h1 class="hero-title">
+      Tools that
+      <span class="hl">work for you</span>
+      24 / 7
+    </h1>
+    <p class="hero-desc">
+      Browser-based SEO tools I built for real work —
+      no installs, no API keys, no logins.
+      Paste, click, done.
+    </p>
+    <div class="hero-actions">
+      <a href="#tools" class="btn-hero-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Explore Tools
+      </a>
+      <a href="../index.html" class="btn-hero-secondary">
+        View Portfolio →
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="h-stat">
+        <div class="h-stat-num">50</div>
+        <div class="h-stat-lbl">URLs per audit</div>
+      </div>
+      <div class="h-stat">
+        <div class="h-stat-num">0</div>
+        <div class="h-stat-lbl">API keys needed</div>
+      </div>
+      <div class="h-stat">
+        <div class="h-stat-num">∞</div>
+        <div class="h-stat-lbl">Free to use</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right — animated mockup -->
+  <div class="hero-r">
+    <div class="mockup">
+      <!-- Title bar -->
+      <div class="m-titlebar">
+        <div class="m-dots">
+          <div class="m-dot r"></div>
+          <div class="m-dot y"></div>
+          <div class="m-dot g"></div>
+        </div>
+        <span class="m-title-txt">Meta Tag Extractor — running...</span>
+        <span class="m-status">● Live</span>
+      </div>
+
+      <div class="m-body">
+        <!-- Progress row -->
+        <div class="m-progress-row">
+          <span class="m-prog-label">Analysing 8 URLs...</span>
+          <div class="m-prog-bar"><div class="m-prog-fill" id="mProgFill"></div></div>
+          <span class="m-prog-pct" id="mProgPct">0%</span>
+        </div>
+
+        <!-- Table head -->
+        <div class="m-table-head">
+          <div class="m-th">URL</div>
+          <div class="m-th">Title</div>
+          <div class="m-th">Desc</div>
+          <div class="m-th">H1</div>
+        </div>
+
+        <!-- Rows -->
+        <div class="m-row" id="mr1" style="opacity:0">
+          <div class="m-bar url w75"></div>
+          <div class="m-bar ok" style="width:88%"></div>
+          <div class="m-bar ok" style="width:80%"></div>
+          <div class="m-bar ok" style="width:70%"></div>
+        </div>
+        <div class="m-row" id="mr2" style="opacity:0">
+          <div class="m-bar url w60"></div>
+          <div class="m-bar warn" style="width:55%"></div>
+          <div class="m-bar bad" style="width:30%"></div>
+          <div class="m-bar ok" style="width:65%"></div>
+        </div>
+        <div class="m-row" id="mr3" style="opacity:0">
+          <div class="m-bar url w40"></div>
+          <div class="m-bar ok" style="width:90%"></div>
+          <div class="m-bar ok" style="width:85%"></div>
+          <div class="m-bar warn" style="width:45%"></div>
+        </div>
+        <div class="m-row" id="mr4" style="opacity:0">
+          <div class="m-bar url w50"></div>
+          <div class="m-bar bad" style="width:20%"></div>
+          <div class="m-bar warn" style="width:60%"></div>
+          <div class="m-bar bad" style="width:15%"></div>
+        </div>
+
+        <div class="m-divider"></div>
+
+        <!-- SERP preview -->
+        <div class="m-serp-label">SERP Preview</div>
+        <div class="m-serp-title" id="mSerpTitle" style="opacity:0">S. Neeraja | SEO Analyst & Automation Architect</div>
+        <div class="m-serp-url" id="mSerpUrl" style="opacity:0">neerajas.tech › home</div>
+        <div class="m-serp-desc" id="mSerpDesc" style="opacity:0">Portfolio of Neeraja — SEO strategy, technical audits, content optimisation and workflow automation for growth-focused teams.</div>
+
+        <div class="m-metric" id="mM1" style="opacity:0">
+          <span class="m-metric-badge ok">✓ Title: 51 chars</span>
+          <div class="m-metric-bar-outer"><div class="m-metric-bar-fill ok" style="width:85%"></div></div>
+          <span class="m-metric-pct">85%</span>
+        </div>
+        <div class="m-metric" id="mM2" style="opacity:0">
+          <span class="m-metric-badge warn">⚠ Desc: 112 chars</span>
+          <div class="m-metric-bar-outer"><div class="m-metric-bar-fill warn" style="width:70%"></div></div>
+          <span class="m-metric-pct">70%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── TOOLS GRID ─── -->
+<section class="tools-section" id="tools">
+  <div class="section-eyebrow rv">What I've Built</div>
+  <h2 class="section-title rv">Free tools, <em>real results</em></h2>
+  <p class="section-sub rv">Every tool here solves a problem I actually faced doing SEO work. Open in any browser — nothing to install.</p>
+
+  <div class="tools-grid">
+
+    <!-- Meta Tag Extractor -->
+    <div class="tool-card rv">
+      <div class="tc-top">
+        <div class="tc-icon-wrap ic-or">🏷️</div>
+        <span class="tc-pill live">● Live</span>
+      </div>
+      <div>
+        <div class="tc-name">Meta Tag Extractor</div>
+      </div>
+      <div class="tc-desc">
+        Paste up to 50 URLs and extract title, description, H1, keywords, Open Graph and Twitter Card data in seconds.
+        Get colour-coded audit results and download a full Excel report — no login needed.
+      </div>
+      <div class="tc-tags">
+        <span class="tc-tag">50 URLs at once</span>
+        <span class="tc-tag">Excel Export</span>
+        <span class="tc-tag">OG / Twitter</span>
+        <span class="tc-tag">Canonical Check</span>
+      </div>
+      <a href="meta-tag-extractor.html" class="tc-link">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Open Tool
+      </a>
+    </div>
+
+    <!-- Automation — coming soon -->
+    <div class="tool-card coming rv d1">
+      <div class="tc-top">
+        <div class="tc-icon-wrap ic-te">⚡</div>
+        <span class="tc-pill soon">Coming Soon</span>
+      </div>
+      <div>
+        <div class="tc-name">SEO Report Automator</div>
+      </div>
+      <div class="tc-desc">
+        Auto-generate weekly SEO health reports by pulling from Google Search Console + GA4.
+        Summarised, formatted, and ready to share with stakeholders — no spreadsheet wrangling.
+      </div>
+      <div class="tc-tags">
+        <span class="tc-tag">GSC + GA4</span>
+        <span class="tc-tag">Auto Reports</span>
+        <span class="tc-tag">Trend Analysis</span>
+        <span class="tc-tag">Shareable</span>
+      </div>
+      <span class="tc-link-dis">
+        🔒 In Development
+      </span>
+    </div>
+
+    <!-- Placeholder 3 -->
+    <div class="tool-card coming rv d2">
+      <div class="tc-top">
+        <div class="tc-icon-wrap ic-pu">🔗</div>
+        <span class="tc-pill soon">Coming Soon</span>
+      </div>
+      <div>
+        <div class="tc-name">Internal Link Auditor</div>
+      </div>
+      <div class="tc-desc">
+        Crawl any domain and map its internal link structure. Spot orphan pages, thin link clusters,
+        and over-linked pages — all in a visual table you can export.
+      </div>
+      <div class="tc-tags">
+        <span class="tc-tag">Link Map</span>
+        <span class="tc-tag">Orphan Pages</span>
+        <span class="tc-tag">Crawl Depth</span>
+        <span class="tc-tag">CSV Export</span>
+      </div>
+      <span class="tc-link-dis">
+        🔒 In Development
+      </span>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer-dark">
+  <span class="footer-left">S. Neeraja</span>
+  <span class="footer-right">SEO Analyst & Automation Architect · <a href="../index.html">Back to Portfolio</a></span>
+</footer>
+
+<script>
+// Scroll reveal
+const obs = new IntersectionObserver(e => e.forEach(x => { if(x.isIntersecting) x.target.classList.add('vis') }), { threshold:.12 });
+document.querySelectorAll('.rv').forEach(el => obs.observe(el));
+
+// Mockup animation sequence
+function runMockupAnim() {
+  const fill  = document.getElementById('mProgFill');
+  const pctEl = document.getElementById('mProgPct');
+  const rows  = ['mr1','mr2','mr3','mr4'];
+  const serp  = ['mSerpTitle','mSerpUrl','mSerpDesc','mM1','mM2'];
+
+  let pct = 0;
+  const progInt = setInterval(() => {
+    pct = Math.min(pct + 2, 100);
+    fill.style.width = pct + '%';
+    pctEl.textContent = pct + '%';
+    if (pct >= 100) clearInterval(progInt);
+  }, 40);
+
+  rows.forEach((id, i) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) { el.style.transition = 'opacity .4s'; el.style.opacity = '1'; }
+    }, 600 + i * 350);
+  });
+
+  serp.forEach((id, i) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) { el.style.transition = 'opacity .4s'; el.style.opacity = '1'; }
+    }, 2200 + i * 200);
+  });
+
+  // Loop
+  setTimeout(() => {
+    fill.style.width = '0%';
+    pctEl.textContent = '0%';
+    pct = 0;
+    [...rows, ...serp].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.opacity = '0';
+    });
+    setTimeout(runMockupAnim, 600);
+  }, 6500);
+}
+
+// Start after a short delay
+setTimeout(runMockupAnim, 900);
+</script>
+</body>
+</html>
