@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Automation Works · S. Neeraja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#18120E;--ink2:#4A3F38;--ink3:#9C8F87;--ink4:#C5BAB4;
+  --paper:#FDFAF6;--paper2:#F7F2EC;--paper3:#EFE8DF;--white:#FFFFFF;
+  --accent:#BF5B3A;--accent-lt:#F5E8E2;--accent-mid:#E8A48A;
+  --teal:#3A7D7B;--teal-lt:#E0F0EF;--gold:#A8833A;--gold-lt:#F5EDD8;
+  --border:rgba(24,18,14,.09);
+  --shadow:0 1px 3px rgba(24,18,14,.06),0 4px 16px rgba(24,18,14,.06);
+  --shadow-lg:0 8px 32px rgba(24,18,14,.10),0 2px 8px rgba(24,18,14,.06);
+  --fd:'DM Serif Display',Georgia,serif;--fb:'Sora',sans-serif;
+  --r:16px;--rl:24px;--rxl:32px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--fb);font-size:16px;line-height:1.7;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+
+/* NAV */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:400;
+  height:62px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 clamp(1.25rem,5vw,4.5rem);
+  background:rgba(253,250,246,.94);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo{display:flex;flex-direction:column;font-family:var(--fd)}
+.nav-logo .nav-first{color:var(--ink2);font-size:.8rem;font-family:var(--fb);font-weight:500;letter-spacing:.12em;text-transform:uppercase;font-style:normal}
+.nav-logo .nav-last{color:var(--accent);font-weight:400;font-style:italic;font-size:1.25rem;line-height:1.1}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{font-size:.72rem;font-weight:500;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;transition:color .2s,border-color .2s;padding:2px 0;border-bottom:1.5px solid transparent}
+.nav-links a:hover,.nav-links a.active{color:var(--accent);border-color:var(--accent)}
+.nav-cta{background:var(--accent);color:#fff;padding:8px 20px;border-radius:100px;font-size:.75rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;transition:all .25s;white-space:nowrap}
+.nav-cta:hover{background:#a34830;transform:translateY(-1px)}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
+.nav-hamburger span{display:block;width:22px;height:2px;background:var(--ink);border-radius:2px}
+
+/* MOBILE MENU */
+.mobile-menu{display:none;position:fixed;inset:0;z-index:300;background:var(--white);flex-direction:column;align-items:center;justify-content:center;gap:2.5rem}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-family:var(--fd);font-size:2rem;color:var(--ink);transition:color .2s}
+.mobile-menu a:hover{color:var(--accent)}
+.mobile-menu .m-close{position:absolute;top:1.5rem;right:1.5rem;font-size:1.5rem;cursor:pointer;color:var(--ink3)}
+
+/* COMING SOON PAGE */
+.cs-wrap{
+  min-height:100svh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:62px clamp(1.25rem,5vw,4.5rem) 4rem;
+  text-align:center;
+  background:var(--paper);
+  position:relative;overflow:hidden;
+}
+.cs-decor{position:absolute;pointer-events:none;inset:0}
+.csd1{position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,#E0F0EF 0%,transparent 65%);top:-100px;right:-100px;opacity:.7}
+.csd2{position:absolute;width:350px;height:350px;border-radius:50%;background:radial-gradient(circle,#F2D5C8 0%,transparent 65%);bottom:-60px;left:-80px;opacity:.6}
+.csd3{position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,#F5EDD8 0%,transparent 65%);top:50%;left:15%;opacity:.5}
+
+.cs-inner{position:relative;z-index:1;max-width:580px}
+.cs-breadcrumb{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:.7rem;font-weight:600;color:var(--ink4);letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:2.5rem;
+}
+.cs-breadcrumb a{color:var(--ink3);transition:color .2s}
+.cs-breadcrumb a:hover{color:var(--accent)}
+
+.cs-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--teal-lt);border:1px solid rgba(58,125,123,.2);
+  padding:6px 18px;border-radius:100px;
+  font-size:.7rem;font-weight:600;color:var(--teal);letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:2rem;
+}
+.cs-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulseTeal 2.2s infinite}
+@keyframes pulseTeal{0%,100%{box-shadow:0 0 0 3px rgba(58,125,123,.2)}50%{box-shadow:0 0 0 7px rgba(58,125,123,.05)}}
+
+.cs-title{
+  font-family:var(--fd);
+  font-size:clamp(2.8rem,6vw,4.5rem);
+  font-weight:400;line-height:1.06;letter-spacing:-.03em;
+  color:var(--ink);margin-bottom:1.25rem;
+}
+.cs-title em{font-style:italic;color:var(--teal);display:block}
+.cs-desc{
+  font-size:clamp(.9rem,1.5vw,1rem);color:var(--ink2);
+  line-height:1.9;font-weight:300;margin-bottom:2.5rem;
+}
+
+/* Preview teaser cards */
+.cs-preview{display:flex;flex-wrap:wrap;gap:.75rem;justify-content:center;margin-bottom:2.5rem}
+.cs-preview-card{
+  background:var(--white);border:1px solid var(--border);border-radius:var(--r);
+  padding:.9rem 1.25rem;
+  display:flex;align-items:center;gap:.75rem;
+  font-size:.8rem;color:var(--ink2);font-weight:500;
+  box-shadow:var(--shadow);transition:all .25s;
+}
+.cs-preview-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:rgba(58,125,123,.2)}
+.cs-pc-icon{font-size:1.2rem;flex-shrink:0}
+
+/* Progress bar */
+.cs-progress{
+  background:var(--paper3);border-radius:100px;height:5px;width:100%;
+  overflow:hidden;margin-bottom:.75rem;
+}
+.cs-progress-fill{
+  height:100%;width:65%;border-radius:100px;
+  background:linear-gradient(90deg,var(--teal),#6BAEAC);
+  position:relative;overflow:hidden;
+}
+.cs-progress-fill::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);
+  animation:shimmer 1.8s infinite;
+}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.cs-progress-label{font-size:.72rem;color:var(--ink4);font-weight:500;text-align:left;margin-bottom:2rem}
+
+.cs-actions{display:flex;gap:.875rem;flex-wrap:wrap;justify-content:center}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--accent);color:#fff;padding:13px 26px;border-radius:100px;
+  font-size:.82rem;font-weight:600;letter-spacing:.03em;transition:all .25s;
+}
+.btn-primary:hover{background:#a34830;transform:translateY(-2px);box-shadow:0 10px 28px rgba(191,91,58,.3)}
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1.5px solid var(--border);color:var(--ink2);padding:13px 26px;border-radius:100px;
+  font-size:.82rem;font-weight:500;transition:all .25s;background:var(--white);
+}
+.btn-secondary:hover{border-color:var(--teal);color:var(--teal);transform:translateY(-2px);box-shadow:var(--shadow)}
+
+/* FOOTER */
+footer{
+  border-top:1px solid var(--border);background:var(--white);
+  padding:1.5rem clamp(1.25rem,5vw,4.5rem);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem;
+}
+.footer-left{font-family:var(--fd);font-size:1rem;font-style:italic;color:var(--ink3)}
+.footer-right{font-size:.72rem;color:var(--ink4);font-weight:500}
+.footer-right a{color:var(--accent)}
+
+@keyframes riseUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:900px){
+  .nav-links{display:none}
+  .nav-cta{display:none}
+  .nav-hamburger{display:flex}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="../index.html" class="nav-logo">
+    <span class="nav-first">S. Neeraja</span>
+    <span class="nav-last">Portfolio</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="../index.html#about">About</a></li>
+    <li><a href="../index.html#experience">Experience</a></li>
+    <li><a href="../index.html#skills">Skills</a></li>
+    <li><a href="seo-tools.html" class="active">Works</a></li>
+    <li><a href="../index.html#certs">Certifications</a></li>
+    <li><a href="../index.html#contact">Contact</a></li>
+  </ul>
+  <a href="../index.html#contact" class="nav-cta">Hire Me</a>
+  <div class="nav-hamburger" onclick="document.getElementById('mobileMenu').classList.toggle('open')">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobileMenu">
+  <span class="m-close" onclick="document.getElementById('mobileMenu').classList.remove('open')">✕</span>
+  <a href="../index.html#about">About</a>
+  <a href="../index.html#experience">Experience</a>
+  <a href="../index.html#skills">Skills</a>
+  <a href="seo-tools.html">Works</a>
+  <a href="../index.html#certs">Certifications</a>
+  <a href="../index.html#contact">Contact</a>
+</div>
+
+<!-- COMING SOON -->
+<div class="cs-wrap">
+  <div class="cs-decor">
+    <div class="csd1"></div>
+    <div class="csd2"></div>
+    <div class="csd3"></div>
+  </div>
+  <div class="cs-inner" style="animation:riseUp .8s .1s both">
+    <div class="cs-breadcrumb">
+      <a href="../index.html">Home</a>
+      <span>›</span>
+      <a href="seo-tools.html">Works</a>
+      <span>›</span>
+      <span>Automation</span>
+    </div>
+
+    <div class="cs-badge">
+      <span class="cs-badge-dot"></span>
+      In Progress
+    </div>
+
+    <h1 class="cs-title">
+      Automation Works
+      <em>Coming Soon</em>
+    </h1>
+    <p class="cs-desc">
+      I'm putting together a detailed showcase of my automation projects — from reporting pipelines
+      and workflow tools to custom scripts that save hours every week.
+      Check back soon, or get in touch if you'd like to know more right now.
+    </p>
+
+    <!-- Teaser preview cards -->
+    <div class="cs-preview">
+      <div class="cs-preview-card">
+        <span class="cs-pc-icon">🤖</span>
+        <span>n8n Workflow Automations</span>
+      </div>
+      <div class="cs-preview-card">
+        <span class="cs-pc-icon">📊</span>
+        <span>Automated SEO Reporting</span>
+      </div>
+      <div class="cs-preview-card">
+        <span class="cs-pc-icon">🐍</span>
+        <span>Python Scrapers & Scripts</span>
+      </div>
+      <div class="cs-preview-card">
+        <span class="cs-pc-icon">⚡</span>
+        <span>Zapier / Make Pipelines</span>
+      </div>
+    </div>
+
+    <!-- Build progress -->
+    <div class="cs-progress">
+      <div class="cs-progress-fill"></div>
+    </div>
+    <p class="cs-progress-label">Page is ~65% complete — coming very soon</p>
+
+    <div class="cs-actions">
+      <a href="../index.html#contact" class="btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Reach Out Directly
+      </a>
+      <a href="seo-tools.html" class="btn-secondary">
+        ← View SEO Tools
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-left">S. Neeraja</span>
+  <span class="footer-right">© 2025 · <a href="../index.html">Back to Home</a></span>
+</footer>
+
+</body>
+</html>
