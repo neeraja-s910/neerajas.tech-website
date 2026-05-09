@@ -122,6 +122,39 @@ nav{
 .progress-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-mid));border-radius:100px;transition:width .3s ease}
 .progress-text{font-size:.75rem;color:var(--ink3);font-weight:500;white-space:nowrap;min-width:80px;text-align:right}
 
+/* Loading Overlay */
+.loader-overlay{
+  position:fixed;inset:0;z-index:999;
+  background:rgba(253,250,246,.92);backdrop-filter:blur(10px);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;
+  padding:2rem;
+}
+.loader-overlay.active{display:flex}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-spinner{
+  width:52px;height:52px;
+  border:3.5px solid var(--paper3);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+  flex-shrink:0;
+}
+.loader-title{
+  font-family:var(--fd);font-size:1.4rem;font-style:italic;
+  color:var(--ink);letter-spacing:-.01em;
+}
+.loader-url{
+  font-size:.78rem;color:var(--accent);font-weight:600;
+  max-width:480px;text-align:center;word-break:break-all;
+  background:var(--accent-lt);border:1px solid rgba(191,91,58,.15);
+  padding:6px 16px;border-radius:100px;min-height:2rem;
+  display:flex;align-items:center;justify-content:center;
+}
+.loader-via{font-size:.67rem;color:var(--ink4);letter-spacing:.05em;text-transform:uppercase}
+.loader-bar-outer{width:320px;max-width:90vw;height:4px;background:var(--paper3);border-radius:100px;overflow:hidden}
+.loader-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-mid));border-radius:100px;transition:width .35s ease;width:0%}
+.loader-count{font-size:.75rem;color:var(--ink3);font-weight:500}
+
 /* Stats strip */
 .stats-strip{display:none;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
 .stats-strip.show{display:grid}
@@ -369,6 +402,16 @@ footer{border-top:1px solid var(--border);background:var(--white);padding:1.5rem
   </div>
 </section>
 
+<!-- LOADING OVERLAY -->
+<div class="loader-overlay" id="loaderOverlay">
+  <div class="loader-spinner"></div>
+  <div class="loader-title">Extracting Meta Tags…</div>
+  <div class="loader-url" id="loaderUrl">Initialising…</div>
+  <div class="loader-via" id="loaderVia"></div>
+  <div class="loader-bar-outer"><div class="loader-bar-fill" id="loaderBarFill"></div></div>
+  <div class="loader-count" id="loaderCount">0 / 0 URLs</div>
+</div>
+
 <!-- FOOTER -->
 <footer>
   <span class="footer-left">S. Neeraja</span>
@@ -434,24 +477,34 @@ async function startExtraction() {
   document.getElementById('legendRow').style.display = 'none';
   document.getElementById('dlBtn').disabled = true;
 
-  // Show progress
+  // Show overlay + thin progress bar
   const progressWrap = document.getElementById('progressWrap');
   const progressFill = document.getElementById('progressFill');
   const progressText = document.getElementById('progressText');
   progressWrap.classList.add('show');
+  document.getElementById('loaderOverlay').classList.add('active');
 
-  for (let i = 0; i < urls.length; i++) {
-    const pct = Math.round(((i) / urls.length) * 100);
+  function updateLoader(url, done, total, via) {
+    const pct = Math.round((done / total) * 100);
     progressFill.style.width = pct + '%';
     progressText.textContent = `Fetching… ${pct}%`;
+    document.getElementById('loaderUrl').textContent = url.length > 60 ? url.slice(0, 57) + '…' : url;
+    document.getElementById('loaderVia').textContent = via ? 'trying: ' + via : '';
+    document.getElementById('loaderBarFill').style.width = pct + '%';
+    document.getElementById('loaderCount').textContent = done + ' / ' + total + ' URLs';
+  }
 
+  for (let i = 0; i < urls.length; i++) {
+    updateLoader(urls[i], i, urls.length, '');
     const result = await fetchMetaTags(urls[i]);
     extractedData.push(result);
     renderRow(result, i + 1);
+    updateLoader(urls[i], i + 1, urls.length, '');
   }
 
   progressFill.style.width = '100%';
   progressText.textContent = 'Done ✓';
+  document.getElementById('loaderOverlay').classList.remove('active');
   setTimeout(() => progressWrap.classList.remove('show'), 1200);
 
   // Show results
