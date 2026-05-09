@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meta Tag Extractor | Works · S. Neeraja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ─── TOKENS ─── */
+:root{
+  --ink:#18120E; --ink2:#4A3F38; --ink3:#9C8F87; --ink4:#C5BAB4;
+  --paper:#FDFAF6; --paper2:#F7F2EC; --paper3:#EFE8DF; --white:#FFFFFF;
+  --accent:#BF5B3A; --accent-lt:#F5E8E2; --accent-mid:#E8A48A;
+  --teal:#3A7D7B; --teal-lt:#E0F0EF;
+  --gold:#A8833A; --gold-lt:#F5EDD8;
+  --green:#2E8B57; --green-lt:rgba(93,189,138,.1);
+  --red:#C0392B; --red-lt:#FDECEA;
+  --border:rgba(24,18,14,.09);
+  --shadow:0 1px 3px rgba(24,18,14,.06),0 4px 16px rgba(24,18,14,.06);
+  --shadow-lg:0 8px 32px rgba(24,18,14,.10),0 2px 8px rgba(24,18,14,.06);
+  --fd:'DM Serif Display',Georgia,serif; --fb:'Sora',sans-serif;
+  --r:16px; --rl:24px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--fb);font-size:16px;line-height:1.7;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+
+/* ─── NAV ─── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:400;height:62px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 clamp(1.25rem,5vw,4.5rem);
+  background:rgba(253,250,246,.94);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo{display:flex;flex-direction:column}
+.nav-logo .nav-first{color:var(--ink2);font-size:.8rem;font-family:var(--fb);font-weight:500;letter-spacing:.12em;text-transform:uppercase}
+.nav-logo .nav-last{color:var(--accent);font-family:var(--fd);font-weight:400;font-style:italic;font-size:1.25rem;line-height:1.1}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{font-size:.72rem;font-weight:500;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;padding:2px 0;border-bottom:1.5px solid transparent;transition:color .2s,border-color .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent);border-color:var(--accent)}
+.nav-cta{background:var(--accent);color:#fff;padding:8px 20px;border-radius:100px;font-size:.75rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;transition:all .25s}
+.nav-cta:hover{background:#a34830;transform:translateY(-1px)}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
+.nav-hamburger span{display:block;width:22px;height:2px;background:var(--ink);border-radius:2px}
+.mobile-menu{display:none;position:fixed;inset:0;z-index:300;background:var(--white);flex-direction:column;align-items:center;justify-content:center;gap:2.5rem}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-family:var(--fd);font-size:2rem;color:var(--ink);transition:color .2s}
+.mobile-menu a:hover{color:var(--accent)}
+.mobile-menu .m-close{position:absolute;top:1.5rem;right:1.5rem;font-size:1.5rem;cursor:pointer;color:var(--ink3)}
+
+/* ─── PAGE HERO ─── */
+.page-hero{
+  padding:100px clamp(1.25rem,5vw,4.5rem) clamp(2.5rem,5vw,4rem);
+  background:var(--paper);position:relative;overflow:hidden;
+}
+.phd1{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,#F2D5C8 0%,transparent 65%);top:-80px;right:-60px;opacity:.6;pointer-events:none;z-index:0}
+.phd2{position:absolute;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,#E0F0EF 0%,transparent 65%);bottom:20px;left:-40px;opacity:.5;pointer-events:none;z-index:0}
+.hero-inner{position:relative;z-index:1;max-width:680px}
+.breadcrumb{display:inline-flex;align-items:center;gap:8px;font-size:.7rem;font-weight:600;color:var(--ink4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:1.5rem}
+.breadcrumb a{color:var(--ink3);transition:color .2s}
+.breadcrumb a:hover{color:var(--accent)}
+.page-eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:.9rem}
+.page-eyebrow::before{content:'';width:22px;height:1.5px;background:var(--accent);flex-shrink:0}
+.page-title{font-family:var(--fd);font-size:clamp(2.2rem,4.5vw,3.6rem);font-weight:400;line-height:1.08;letter-spacing:-.03em;color:var(--ink);margin-bottom:1rem}
+.page-title em{font-style:italic;color:var(--accent)}
+.page-desc{font-size:.93rem;color:var(--ink2);line-height:1.9;font-weight:300;max-width:520px;margin-bottom:1.5rem}
+.hero-chips{display:flex;gap:.6rem;flex-wrap:wrap}
+.h-chip{display:inline-flex;align-items:center;gap:6px;background:var(--white);border:1px solid var(--border);padding:5px 13px;border-radius:100px;font-size:.7rem;font-weight:500;color:var(--ink2);box-shadow:var(--shadow)}
+.hc-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+
+/* ─── TOOL SECTION ─── */
+#tool{padding:0 clamp(1.25rem,5vw,4.5rem) clamp(3rem,6vw,5rem);background:var(--white)}
+
+.tool-card{
+  background:var(--white);border:1px solid var(--border);border-radius:var(--rl);
+  overflow:hidden;box-shadow:var(--shadow-lg);
+}
+
+/* Input panel */
+.input-panel{padding:clamp(1.5rem,3vw,2.5rem);border-bottom:1px solid var(--border);background:var(--paper2)}
+.input-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
+.input-label-text{font-size:.78rem;font-weight:600;color:var(--ink2);letter-spacing:.04em}
+.url-counter{font-size:.7rem;color:var(--ink4);font-weight:500}
+.url-counter span{font-weight:700;color:var(--accent)}
+#urlInput{
+  width:100%;min-height:140px;resize:vertical;
+  background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);
+  padding:1rem 1.1rem;font-family:var(--fb);font-size:.85rem;color:var(--ink);
+  outline:none;transition:border-color .2s,box-shadow .2s;line-height:1.7;
+}
+#urlInput:focus{border-color:rgba(191,91,58,.4);box-shadow:0 0 0 3px rgba(191,91,58,.07)}
+#urlInput::placeholder{color:var(--ink4)}
+.input-hint{margin-top:.5rem;font-size:.7rem;color:var(--ink4);font-weight:400}
+.input-hint strong{color:var(--ink3)}
+.input-actions{display:flex;gap:.75rem;margin-top:1.1rem;flex-wrap:wrap;align-items:center}
+.btn-extract{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--accent);color:#fff;border:none;cursor:pointer;
+  padding:11px 24px;border-radius:100px;
+  font-family:var(--fb);font-size:.82rem;font-weight:600;letter-spacing:.03em;
+  transition:all .25s;
+}
+.btn-extract:hover:not(:disabled){background:#a34830;transform:translateY(-2px);box-shadow:0 8px 24px rgba(191,91,58,.3)}
+.btn-extract:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.btn-clear{
+  display:inline-flex;align-items:center;gap:6px;
+  background:transparent;border:1.5px solid var(--border);color:var(--ink3);
+  padding:11px 18px;border-radius:100px;cursor:pointer;
+  font-family:var(--fb);font-size:.78rem;font-weight:500;transition:all .2s;
+}
+.btn-clear:hover{border-color:var(--red);color:var(--red);background:var(--red-lt)}
+
+/* Progress */
+.progress-wrap{display:none;padding:.85rem clamp(1.5rem,3vw,2.5rem);background:var(--paper3);border-bottom:1px solid var(--border);align-items:center;gap:1rem}
+.progress-wrap.show{display:flex}
+.progress-bar-outer{flex:1;height:5px;background:var(--paper2);border-radius:100px;overflow:hidden}
+.progress-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-mid));border-radius:100px;transition:width .3s ease}
+.progress-text{font-size:.75rem;color:var(--ink3);font-weight:500;white-space:nowrap;min-width:80px;text-align:right}
+
+/* Stats strip */
+.stats-strip{display:none;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.stats-strip.show{display:grid}
+.stat-cell{background:var(--white);padding:.85rem 1rem;text-align:center}
+.stat-num{font-family:var(--fd);font-size:1.5rem;color:var(--ink);line-height:1;margin-bottom:2px}
+.stat-lbl{font-size:.62rem;color:var(--ink4);letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.stat-num.good{color:var(--green)}
+.stat-num.warn{color:var(--gold)}
+.stat-num.bad{color:var(--red)}
+
+/* Results area */
+.results-area{padding:0}
+.results-header{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;
+  padding:1.1rem clamp(1.5rem,3vw,2.5rem);border-bottom:1px solid var(--border);
+}
+.results-title{font-size:.82rem;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:.5rem}
+.results-count{font-size:.7rem;color:var(--ink4);font-weight:400}
+.btn-download{
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--teal);color:#fff;border:none;cursor:pointer;
+  padding:9px 18px;border-radius:100px;
+  font-family:var(--fb);font-size:.76rem;font-weight:600;letter-spacing:.03em;
+  transition:all .25s;
+}
+.btn-download:hover:not(:disabled){background:#2d6665;transform:translateY(-1px);box-shadow:0 6px 18px rgba(58,125,123,.3)}
+.btn-download:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* Table */
+.table-wrap{overflow-x:auto;max-height:520px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+thead{position:sticky;top:0;z-index:10}
+thead th{
+  background:var(--paper2);padding:.7rem .9rem;
+  text-align:left;font-size:.63rem;font-weight:700;
+  color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;
+  border-bottom:1px solid var(--border);white-space:nowrap;
+}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s}
+tbody tr:hover{background:var(--paper)}
+tbody tr:last-child{border-bottom:none}
+td{padding:.7rem .9rem;vertical-align:top;color:var(--ink2);line-height:1.5}
+td.num{color:var(--ink4);font-size:.7rem;text-align:center}
+td.url-cell{font-size:.75rem;max-width:180px}
+td.url-cell a{
+  color:var(--accent);font-weight:500;
+  display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  transition:color .2s;
+}
+td.url-cell a:hover{color:#a34830;text-decoration:underline}
+td.content-cell{max-width:220px}
+.cell-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.cell-text.multiline{white-space:normal;-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical}
+.badge-good{display:inline-block;background:var(--green-lt);color:var(--green);padding:1px 7px;border-radius:100px;font-size:.62rem;font-weight:700;border:1px solid rgba(46,139,87,.15)}
+.badge-warn{display:inline-block;background:var(--gold-lt);color:var(--gold);padding:1px 7px;border-radius:100px;font-size:.62rem;font-weight:700;border:1px solid rgba(168,131,58,.2)}
+.badge-bad{display:inline-block;background:var(--red-lt);color:var(--red);padding:1px 7px;border-radius:100px;font-size:.62rem;font-weight:700;border:1px solid rgba(192,57,43,.15)}
+.badge-info{display:inline-block;background:var(--teal-lt);color:var(--teal);padding:1px 7px;border-radius:100px;font-size:.62rem;font-weight:700;border:1px solid rgba(58,125,123,.15)}
+.char-count{font-size:.65rem;color:var(--ink4);margin-top:2px}
+.issue-list{display:flex;flex-direction:column;gap:3px}
+.issue-item{font-size:.68rem;color:var(--red);display:flex;align-items:flex-start;gap:4px}
+.issue-item::before{content:'!';min-width:14px;height:14px;border-radius:50%;background:var(--red-lt);color:var(--red);font-weight:700;font-size:.6rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+/* Empty state */
+.empty-state{
+  padding:4rem 2rem;text-align:center;
+}
+.es-icon{font-size:2.8rem;margin-bottom:1rem;opacity:.5}
+.es-title{font-family:var(--fd);font-size:1.3rem;color:var(--ink3);margin-bottom:.5rem;font-style:italic}
+.es-desc{font-size:.82rem;color:var(--ink4);line-height:1.7;max-width:360px;margin:0 auto}
+
+/* Error row */
+.error-row td{background:var(--red-lt)}
+
+/* Legend */
+.legend{display:flex;gap:1rem;flex-wrap:wrap;padding:.8rem clamp(1.5rem,3vw,2.5rem);border-top:1px solid var(--border);background:var(--paper);align-items:center}
+.legend-title{font-size:.65rem;font-weight:700;color:var(--ink4);letter-spacing:.07em;text-transform:uppercase;margin-right:.25rem}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:.67rem;color:var(--ink3)}
+
+/* ─── FOOTER ─── */
+footer{border-top:1px solid var(--border);background:var(--white);padding:1.5rem clamp(1.25rem,5vw,4.5rem);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
+.footer-left{font-family:var(--fd);font-size:1rem;font-style:italic;color:var(--ink3)}
+.footer-right{font-size:.72rem;color:var(--ink4);font-weight:500}
+.footer-right a{color:var(--accent)}
+.footer-right a:hover{text-decoration:underline}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px){
+  .nav-links{display:none}.nav-cta{display:none}.nav-hamburger{display:flex}
+  .stats-strip{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:560px){
+  .stats-strip{grid-template-columns:repeat(2,1fr)}
+  .legend{gap:.6rem}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="../index.html" class="nav-logo">
+    <span class="nav-first">S. Neeraja</span>
+    <span class="nav-last">Portfolio</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="../index.html#about">About</a></li>
+    <li><a href="../index.html#experience">Experience</a></li>
+    <li><a href="../index.html#skills">Skills</a></li>
+    <li><a href="seo-tools.html" class="active">Works</a></li>
+    <li><a href="../index.html#certs">Certifications</a></li>
+    <li><a href="../index.html#contact">Contact</a></li>
+  </ul>
+  <a href="../index.html#contact" class="nav-cta">Hire Me</a>
+  <div class="nav-hamburger" onclick="document.getElementById('mobileMenu').classList.toggle('open')">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <span class="m-close" onclick="document.getElementById('mobileMenu').classList.remove('open')">✕</span>
+  <a href="../index.html#about">About</a>
+  <a href="../index.html#experience">Experience</a>
+  <a href="../index.html#skills">Skills</a>
+  <a href="seo-tools.html">Works</a>
+  <a href="../index.html#certs">Certifications</a>
+  <a href="../index.html#contact">Contact</a>
+</div>
+
+<!-- PAGE HERO -->
+<div class="page-hero">
+  <div class="phd1"></div><div class="phd2"></div>
+  <div class="hero-inner">
+    <div class="breadcrumb">
+      <a href="../index.html">Home</a>
+      <span>›</span>
+      <a href="seo-tools.html">Works</a>
+      <span>›</span>
+      <span>Meta Tag Extractor</span>
+    </div>
+    <div class="page-eyebrow">SEO Automation Tool</div>
+    <h1 class="page-title">Meta Tag <em>Extractor</em></h1>
+    <p class="page-desc">
+      Paste up to 50 URLs — instantly extract title, description, H1, keywords and
+      all meta tags. Get colour-coded audit results and download a full Excel report.
+    </p>
+    <div class="hero-chips">
+      <span class="h-chip"><span class="hc-dot" style="background:var(--accent)"></span>Title &amp; Description</span>
+      <span class="h-chip"><span class="hc-dot" style="background:var(--teal)"></span>H1 Tags</span>
+      <span class="h-chip"><span class="hc-dot" style="background:var(--gold)"></span>OG / Twitter Cards</span>
+      <span class="h-chip"><span class="hc-dot" style="background:var(--green)"></span>Canonical &amp; Robots</span>
+      <span class="h-chip"><span class="hc-dot" style="background:#7B5EA7"></span>Excel Export</span>
+    </div>
+  </div>
+</div>
+
+<!-- TOOL -->
+<section id="tool">
+  <div class="tool-card">
+
+    <!-- Input Panel -->
+    <div class="input-panel">
+      <div class="input-label">
+        <span class="input-label-text">🔗 Enter URLs to Audit</span>
+        <span class="url-counter"><span id="urlCount">0</span> / 50 URLs</span>
+      </div>
+      <textarea id="urlInput" placeholder="https://www.neerajas.tech&#10;https://www.example.com/page&#10;https://www.yoursite.com/blog&#10;&#10;One URL per line · Include https://"></textarea>
+      <p class="input-hint"><strong>Tip:</strong> One URL per line · Max 50 URLs · Include <code>https://</code></p>
+      <div class="input-actions">
+        <button class="btn-extract" id="extractBtn" onclick="startExtraction()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          ⚡ Extract Meta Tags
+        </button>
+        <button class="btn-clear" onclick="clearAll()">✕ Clear</button>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar-outer">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+      <span class="progress-text" id="progressText">Fetching… 0%</span>
+    </div>
+
+    <!-- Stats Strip -->
+    <div class="stats-strip" id="statsStrip">
+      <div class="stat-cell"><div class="stat-num" id="s-total">0</div><div class="stat-lbl">Total URLs</div></div>
+      <div class="stat-cell"><div class="stat-num good" id="s-goodTitle">0</div><div class="stat-lbl">Good Titles</div></div>
+      <div class="stat-cell"><div class="stat-num good" id="s-goodDesc">0</div><div class="stat-lbl">Good Descs</div></div>
+      <div class="stat-cell"><div class="stat-num warn" id="s-h1Issues">0</div><div class="stat-lbl">H1 Issues</div></div>
+      <div class="stat-cell"><div class="stat-num bad" id="s-errors">0</div><div class="stat-lbl">Fetch Errors</div></div>
+      <div class="stat-cell"><div class="stat-num bad" id="s-totalIssues">0</div><div class="stat-lbl">Total Issues</div></div>
+    </div>
+
+    <!-- Results Header -->
+    <div class="results-header" id="resultsHeader" style="display:none">
+      <span class="results-title">
+        📊 Extraction Results
+        <span class="results-count" id="resultsCount"></span>
+      </span>
+      <button class="btn-download" id="dlBtn" onclick="downloadExcel()" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Excel Report
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap" id="tableWrap">
+      <div class="empty-state" id="emptyState">
+        <div class="es-icon">🏷️</div>
+        <div class="es-title">Ready to Extract</div>
+        <p class="es-desc">Paste your URLs above and click <strong>Extract Meta Tags</strong> to audit your pages instantly.</p>
+      </div>
+      <table id="resultsTable" style="display:none">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>URL</th>
+            <th>Title <span style="font-weight:400;color:var(--ink4)">(50–60 ideal)</span></th>
+            <th>Meta Description <span style="font-weight:400;color:var(--ink4)">(120–160 ideal)</span></th>
+            <th>H1 Tag(s)</th>
+            <th>Meta Keywords</th>
+            <th>Robots</th>
+            <th>Canonical</th>
+            <th>OG Title</th>
+            <th>OG Description</th>
+            <th>OG Image</th>
+            <th>Twitter Card</th>
+            <th>Issues</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend" id="legendRow" style="display:none">
+      <span class="legend-title">Legend:</span>
+      <span class="legend-item"><span class="badge-good">Good</span> Ideal range</span>
+      <span class="legend-item"><span class="badge-warn">Short/Long</span> Too short or too long</span>
+      <span class="legend-item"><span class="badge-bad">Missing</span> Missing / Critical issue</span>
+      <span class="legend-item"><span class="badge-info">Info</span> Informational</span>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-left">S. Neeraja</span>
+  <span class="footer-right">
+    SEO Analyst &amp; Automation Architect ·
+    <a href="seo-tools.html">← Back to Works</a> ·
+    <a href="../index.html">Home</a>
+  </span>
+</footer>
+
+<script>
+// ─── STATE ───
+let extractedData = [];
+
+// ─── URL COUNTER ───
+document.getElementById('urlInput').addEventListener('input', function() {
+  const urls = parseUrls(this.value);
+  document.getElementById('urlCount').textContent = urls.length;
+});
+
+function parseUrls(text) {
+  return text.split('\n')
+    .map(u => u.trim())
+    .filter(u => u.length > 0 && (u.startsWith('http://') || u.startsWith('https://')));
+}
+
+// ─── CLEAR ───
+function clearAll() {
+  document.getElementById('urlInput').value = '';
+  document.getElementById('urlCount').textContent = '0';
+  document.getElementById('emptyState').style.display = '';
+  document.getElementById('resultsTable').style.display = 'none';
+  document.getElementById('statsStrip').classList.remove('show');
+  document.getElementById('progressWrap').classList.remove('show');
+  document.getElementById('resultsHeader').style.display = 'none';
+  document.getElementById('legendRow').style.display = 'none';
+  document.getElementById('dlBtn').disabled = true;
+  extractedData = [];
+}
+
+// ─── MAIN EXTRACTION ───
+async function startExtraction() {
+  const raw = document.getElementById('urlInput').value;
+  const urls = parseUrls(raw);
+
+  if (urls.length === 0) {
+    alert('Please enter at least one valid URL starting with https:// or http://');
+    return;
+  }
+  if (urls.length > 50) {
+    alert('Maximum 50 URLs allowed. Please reduce your list.');
+    return;
+  }
+
+  // Reset UI
+  extractedData = [];
+  document.getElementById('extractBtn').disabled = true;
+  document.getElementById('resultsBody').innerHTML = '';
+  document.getElementById('resultsTable').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('statsStrip').classList.remove('show');
+  document.getElementById('resultsHeader').style.display = 'none';
+  document.getElementById('legendRow').style.display = 'none';
+  document.getElementById('dlBtn').disabled = true;
+
+  // Show progress
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  progressWrap.classList.add('show');
+
+  for (let i = 0; i < urls.length; i++) {
+    const pct = Math.round(((i) / urls.length) * 100);
+    progressFill.style.width = pct + '%';
+    progressText.textContent = `Fetching… ${pct}%`;
+
+    const result = await fetchMetaTags(urls[i]);
+    extractedData.push(result);
+    renderRow(result, i + 1);
+  }
+
+  progressFill.style.width = '100%';
+  progressText.textContent = 'Done ✓';
+  setTimeout(() => progressWrap.classList.remove('show'), 1200);
+
+  // Show results
+  updateStats();
+  document.getElementById('resultsTable').style.display = '';
+  document.getElementById('resultsHeader').style.display = '';
+  document.getElementById('legendRow').style.display = '';
+  document.getElementById('statsStrip').classList.add('show');
+  document.getElementById('resultsCount').textContent = `— ${extractedData.length} URL${extractedData.length !== 1 ? 's' : ''} audited`;
+  document.getElementById('dlBtn').disabled = false;
+  document.getElementById('extractBtn').disabled = false;
+
+  // Smooth scroll to results
+  document.getElementById('tool').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── FETCH & PARSE ───
+async function fetchMetaTags(url) {
+  const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+  try {
+    const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
+    if (!resp.ok) throw new Error('Network response was not ok');
+    const json = await resp.json();
+    if (!json.contents) throw new Error('Empty response');
+    return parseMeta(json.contents, url);
+  } catch (err) {
+    return {
+      url, error: true,
+      title:'', description:'', h1:'', keywords:'', robots:'',
+      canonical:'', ogTitle:'', ogDesc:'', ogImage:'', twitterCard:''
+    };
+  }
+}
+
+function parseMeta(html, url) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  const get = (sel, attr) => {
+    const el = doc.querySelector(sel);
+    return el ? (attr ? el.getAttribute(attr) || '' : el.textContent || '') : '';
+  };
+  const getAll = (sel) => Array.from(doc.querySelectorAll(sel)).map(el => el.textContent.trim()).filter(Boolean);
+
+  const title       = get('title').trim();
+  const description = get('meta[name="description"]', 'content').trim();
+  const h1s         = getAll('h1');
+  const h1          = h1s.join(' | ');
+  const keywords    = get('meta[name="keywords"]', 'content').trim();
+  const robots      = get('meta[name="robots"]', 'content').trim();
+  const canonical   = get('link[rel="canonical"]', 'href').trim();
+  const ogTitle     = get('meta[property="og:title"]', 'content').trim();
+  const ogDesc      = get('meta[property="og:description"]', 'content').trim();
+  const ogImage     = get('meta[property="og:image"]', 'content').trim();
+  const twitterCard = get('meta[name="twitter:card"]', 'content').trim();
+
+  return { url, error: false, title, description, h1, h1s, keywords, robots, canonical, ogTitle, ogDesc, ogImage, twitterCard };
+}
+
+// ─── RENDER ROW ───
+function renderRow(d, idx) {
+  const tbody = document.getElementById('resultsBody');
+  const tr = document.createElement('tr');
+  if (d.error) tr.classList.add('error-row');
+
+  const issues = getIssues(d);
+
+  tr.innerHTML = `
+    <td class="num">${idx}</td>
+    <td class="url-cell"><a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer" title="${esc(d.url)}">${esc(d.url)}</a></td>
+    <td class="content-cell">${renderTitle(d)}</td>
+    <td class="content-cell">${renderDesc(d)}</td>
+    <td class="content-cell">${renderH1(d)}</td>
+    <td class="content-cell">${d.keywords ? `<span class="cell-text multiline">${esc(d.keywords)}</span>` : badge('bad','Missing')}</td>
+    <td>${d.robots ? badge('info', esc(d.robots)) : badge('info','index, follow')}</td>
+    <td class="content-cell">${renderCanonical(d)}</td>
+    <td class="content-cell">${d.ogTitle ? `<span class="cell-text">${esc(d.ogTitle)}</span>` : badge('warn','Missing')}</td>
+    <td class="content-cell">${d.ogDesc ? `<span class="cell-text multiline">${esc(d.ogDesc)}</span>` : badge('warn','Missing')}</td>
+    <td>${d.ogImage ? badge('good','✓ Set') : badge('warn','Missing')}</td>
+    <td>${d.twitterCard ? badge('info', esc(d.twitterCard)) : badge('warn','Missing')}</td>
+    <td>${renderIssues(issues, d.error)}</td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function renderTitle(d) {
+  if (d.error) return `<span class="badge-bad">Fetch Error</span>`;
+  if (!d.title) return badge('bad','Missing');
+  const len = d.title.length;
+  const b = len >= 50 && len <= 60 ? 'good' : (len > 0 ? 'warn' : 'bad');
+  const label = len >= 50 && len <= 60 ? 'Good' : (len < 50 ? 'Short' : 'Long');
+  return `<span class="cell-text" title="${esc(d.title)}">${esc(d.title)}</span><div class="char-count">${len} chars · ${badge(b, label)}</div>`;
+}
+
+function renderDesc(d) {
+  if (d.error) return `—`;
+  if (!d.description) return badge('bad','Missing');
+  const len = d.description.length;
+  const b = len >= 120 && len <= 160 ? 'good' : (len > 0 ? 'warn' : 'bad');
+  const label = len >= 120 && len <= 160 ? 'Good' : (len < 120 ? 'Short' : 'Long');
+  return `<span class="cell-text multiline" title="${esc(d.description)}">${esc(d.description)}</span><div class="char-count">${len} chars · ${badge(b, label)}</div>`;
+}
+
+function renderH1(d) {
+  if (d.error) return `—`;
+  if (!d.h1s || d.h1s.length === 0) return badge('bad','Missing');
+  if (d.h1s.length > 1) return `<span class="cell-text">${esc(d.h1)}</span><div class="char-count">${badge('warn', d.h1s.length + ' H1s found')}</div>`;
+  return `<span class="cell-text">${esc(d.h1)}</span><div class="char-count">${badge('good','1 H1')}</div>`;
+}
+
+function renderCanonical(d) {
+  if (!d.canonical) return badge('warn','Not Set');
+  const isSelf = d.canonical === d.url || d.canonical.replace(/\/$/, '') === d.url.replace(/\/$/, '');
+  return `<a href="${esc(d.canonical)}" target="_blank" rel="noopener noreferrer" style="color:var(--teal);font-size:.72rem;word-break:break-all;" title="${esc(d.canonical)}">${isSelf ? badge('good','Self') : badge('info','External')}</a>`;
+}
+
+function getIssues(d) {
+  if (d.error) return ['Could not fetch page — check URL or CORS'];
+  const issues = [];
+  if (!d.title) issues.push('Title tag is missing');
+  else if (d.title.length < 50) issues.push('Title too short (< 50 chars)');
+  else if (d.title.length > 60) issues.push('Title too long (> 60 chars)');
+  if (!d.description) issues.push('Meta description is missing');
+  else if (d.description.length < 120) issues.push('Description too short (< 120 chars)');
+  else if (d.description.length > 160) issues.push('Description too long (> 160 chars)');
+  if (!d.h1s || d.h1s.length === 0) issues.push('No H1 tag found');
+  else if (d.h1s.length > 1) issues.push(`Multiple H1 tags (${d.h1s.length})`);
+  if (!d.ogTitle) issues.push('OG Title missing');
+  if (!d.ogImage) issues.push('OG Image missing');
+  if (!d.canonical) issues.push('Canonical tag not set');
+  return issues;
+}
+
+function renderIssues(issues, isError) {
+  if (issues.length === 0) return badge('good','✓ All Good');
+  return `<div class="issue-list">${issues.map(i => `<span class="issue-item">${esc(i)}</span>`).join('')}</div>`;
+}
+
+function badge(type, text) {
+  return `<span class="badge-${type}">${text}</span>`;
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ─── STATS ───
+function updateStats() {
+  const total = extractedData.length;
+  const errors = extractedData.filter(d => d.error).length;
+  const goodTitle = extractedData.filter(d => !d.error && d.title && d.title.length >= 50 && d.title.length <= 60).length;
+  const goodDesc  = extractedData.filter(d => !d.error && d.description && d.description.length >= 120 && d.description.length <= 160).length;
+  const h1Issues  = extractedData.filter(d => !d.error && (!d.h1s || d.h1s.length !== 1)).length;
+  const totalIssues = extractedData.reduce((acc, d) => acc + getIssues(d).length, 0);
+
+  document.getElementById('s-total').textContent       = total;
+  document.getElementById('s-goodTitle').textContent   = goodTitle;
+  document.getElementById('s-goodDesc').textContent    = goodDesc;
+  document.getElementById('s-h1Issues').textContent    = h1Issues;
+  document.getElementById('s-errors').textContent      = errors;
+  document.getElementById('s-totalIssues').textContent = totalIssues;
+}
+
+// ─── EXCEL DOWNLOAD ───
+function downloadExcel() {
+  if (!extractedData.length) return;
+
+  const rows = extractedData.map((d, i) => {
+    const issues = getIssues(d);
+    return {
+      '#': i + 1,
+      'URL': d.url,
+      'Title': d.title,
+      'Title Length': d.title ? d.title.length : 0,
+      'Title Status': d.title ? (d.title.length >= 50 && d.title.length <= 60 ? 'Good' : d.title.length < 50 ? 'Too Short' : 'Too Long') : 'Missing',
+      'Meta Description': d.description,
+      'Description Length': d.description ? d.description.length : 0,
+      'Description Status': d.description ? (d.description.length >= 120 && d.description.length <= 160 ? 'Good' : d.description.length < 120 ? 'Too Short' : 'Too Long') : 'Missing',
+      'H1 Tag(s)': d.h1,
+      'H1 Count': d.h1s ? d.h1s.length : 0,
+      'H1 Status': !d.h1s || d.h1s.length === 0 ? 'Missing' : d.h1s.length > 1 ? 'Multiple H1s' : 'Good',
+      'Meta Keywords': d.keywords,
+      'Robots': d.robots || 'index, follow (default)',
+      'Canonical': d.canonical,
+      'OG Title': d.ogTitle,
+      'OG Description': d.ogDesc,
+      'OG Image': d.ogImage,
+      'Twitter Card': d.twitterCard,
+      'Issue Count': issues.length,
+      'Issues': issues.join('; ')
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  // Column widths
+  ws['!cols'] = [
+    {wch:4},{wch:45},{wch:55},{wch:10},{wch:12},
+    {wch:80},{wch:14},{wch:16},{wch:30},{wch:6},{wch:12},
+    {wch:30},{wch:20},{wch:45},{wch:45},{wch:45},{wch:40},{wch:12},{wch:20},{wch:10},{wch:60}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Meta Tag Audit');
+
+  // Add a summary sheet
+  const summaryRows = [
+    { 'Metric': 'Total URLs Audited', 'Value': extractedData.length },
+    { 'Metric': 'Good Titles (50–60 chars)', 'Value': extractedData.filter(d => !d.error && d.title && d.title.length >= 50 && d.title.length <= 60).length },
+    { 'Metric': 'Good Descriptions (120–160 chars)', 'Value': extractedData.filter(d => !d.error && d.description && d.description.length >= 120 && d.description.length <= 160).length },
+    { 'Metric': 'Missing Titles', 'Value': extractedData.filter(d => !d.error && !d.title).length },
+    { 'Metric': 'Missing Descriptions', 'Value': extractedData.filter(d => !d.error && !d.description).length },
+    { 'Metric': 'H1 Issues', 'Value': extractedData.filter(d => !d.error && (!d.h1s || d.h1s.length !== 1)).length },
+    { 'Metric': 'Missing OG Title', 'Value': extractedData.filter(d => !d.error && !d.ogTitle).length },
+    { 'Metric': 'Missing OG Image', 'Value': extractedData.filter(d => !d.error && !d.ogImage).length },
+    { 'Metric': 'Fetch Errors', 'Value': extractedData.filter(d => d.error).length },
+    { 'Metric': 'Total Issues Found', 'Value': extractedData.reduce((acc, d) => acc + getIssues(d).length, 0) },
+    { 'Metric': 'Audit Date', 'Value': new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) },
+    { 'Metric': 'Audited By', 'Value': 'S. Neeraja · neerajas.tech' },
+  ];
+  const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+  wsSummary['!cols'] = [{wch:35},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `meta-tag-audit-${date}.xlsx`);
+}
+</script>
+</body>
+</html>
