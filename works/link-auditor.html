@@ -186,6 +186,9 @@ tr:hover td{background:var(--paper2)}
         <span>🔍</span> Start Audit
       </button>
     </div>
+    <div style="margin-top:.9rem;padding:.6rem 1rem;background:#FFF8E7;border:1px solid #F0D080;border-radius:10px;font-size:.75rem;color:#7A6010;line-height:1.6;">
+      ⚡ <strong>Best for static/CMS sites</strong> (WordPress, Webflow, blogs, portfolios). Large JS-heavy sites (BankBazaar, Amazon etc.) block external crawlers — try your own site or a client's site instead.
+    </div>
     <div class="options-row">
       <div class="opt-group">
         <label class="opt-label">Max pages:</label>
@@ -308,39 +311,71 @@ tr:hover td{background:var(--paper2)}
 
 <script>
 // ── State ──────────────────────────────────────────────────────
-let crawlData = {}; // url → { depth, inbound:Set, outbound:[], status }
+let crawlData = {};
 let crawlResults = [];
 let isCrawling = false;
 
-// ── CORS Proxy ──────────────────────────────────────────────────
-const PROXY = 'https://api.allorigins.win/get?url=';
+// ── CORS Proxies (tried in order) ──────────────────────────────
+const PROXIES = [
+  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
 
 async function fetchViaProxy(url) {
-  const resp = await fetch(PROXY + encodeURIComponent(url), {signal: AbortSignal.timeout(12000)});
-  if (!resp.ok) throw new Error('Proxy error ' + resp.status);
-  const data = await resp.json();
-  return data.contents || '';
+  for (let i = 0; i < PROXIES.length; i++) {
+    try {
+      const proxyUrl = PROXIES[i](url);
+      const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+      if (!resp.ok) continue;
+      // allorigins returns JSON wrapper; others return raw HTML
+      const text = await resp.text();
+      try {
+        const json = JSON.parse(text);
+        if (json.contents && json.contents.length > 100) return json.contents;
+      } catch(e) {
+        if (text.length > 100) return text;
+      }
+    } catch(e) { /* try next proxy */ }
+  }
+  throw new Error('All proxies failed for: ' + url);
 }
 
 // ── Extract internal links from HTML ───────────────────────────
 function extractLinks(html, baseUrl) {
   const base = new URL(baseUrl);
   const links = new Set();
-  const re = /href=["']([^"'#?]+)/gi;
+  // Match href="..." and href='...' including relative paths
+  const re = /href=["'\s]([^"'>\s#]+)/gi;
   let m;
   while ((m = re.exec(html)) !== null) {
     try {
       const href = m[1].trim();
-      if (!href || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) continue;
+      if (!href || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:') || href === '#') continue;
       const abs = new URL(href, baseUrl);
-      // Internal only, same hostname, no file extensions
       if (abs.hostname !== base.hostname) continue;
-      if (/\.(pdf|jpg|jpeg|png|gif|svg|css|js|ico|woff|woff2|zip|xml)$/i.test(abs.pathname)) continue;
-      const clean = abs.origin + abs.pathname.replace(/\/$/, '') || '/';
-      links.add(clean);
+      if (/\.(pdf|jpg|jpeg|png|gif|svg|css|js|ico|woff|woff2|zip|xml|txt|mp4|webp)$/i.test(abs.pathname)) continue;
+      const clean = abs.origin + (abs.pathname.replace(/\/$/, '') || '/');
+      if (clean !== base.origin) links.add(clean);
     } catch(e) {}
   }
   return [...links];
+}
+
+// ── Parse sitemap.xml ──────────────────────────────────────────
+function parseSitemap(xml, origin) {
+  const urls = [];
+  const re = /<loc>\s*(https?:\/\/[^<\s]+)\s*<\/loc>/gi;
+  let m;
+  while ((m = re.exec(xml)) !== null) {
+    try {
+      const u = new URL(m[1].trim());
+      if (u.origin === origin && !/\.(xml|pdf|jpg|jpeg|png|gif|svg|css|js)$/i.test(u.pathname)) {
+        urls.push(u.origin + (u.pathname.replace(/\/$/, '') || '/'));
+      }
+    } catch(e) {}
+  }
+  return [...new Set(urls)];
 }
 
 // ── Normalise URL ───────────────────────────────────────────────
@@ -352,19 +387,11 @@ function normalise(url) {
 }
 
 // ── UI helpers ──────────────────────────────────────────────────
-function setProgress(pct, status, count, log) {
+function setProgress(pct, status, count, logMsg) {
   document.getElementById('progressBar').style.width = pct + '%';
   if (status) document.getElementById('progressStatus').textContent = status;
   if (count !== undefined) document.getElementById('progressCount').textContent = count;
-  if (log) {
-    const el = document.getElementById('progressLog');
-    el.textContent = '↳ ' + log;
-  }
-}
-
-function log(msg) {
-  const el = document.getElementById('progressLog');
-  el.textContent = '↳ ' + msg;
+  if (logMsg !== undefined) document.getElementById('progressLog').textContent = '↳ ' + logMsg;
 }
 
 // ── Main crawl ──────────────────────────────────────────────────
@@ -377,57 +404,92 @@ async function startAudit() {
   let startUrl;
   try { startUrl = normalise(rawUrl); } catch(e) { alert('Invalid URL.'); return; }
 
-  const MAX = parseInt(document.getElementById('maxPages').value);
+  const origin = new URL(startUrl).origin;
+  const MAX    = parseInt(document.getElementById('maxPages').value);
   const OVER_T = parseInt(document.getElementById('overThreshold').value);
 
   isCrawling = true;
   crawlData = {};
   crawlResults = [];
   document.getElementById('auditBtn').disabled = true;
-  document.getElementById('auditBtn').textContent = '⏳ Crawling…';
+  document.getElementById('auditBtn').innerHTML = '⏳ Crawling…';
   document.getElementById('progressWrap').classList.add('show');
   document.getElementById('resultsSection').classList.remove('show');
-  setProgress(0, 'Starting crawl…', '0 / 0 pages', '');
+  setProgress(2, 'Checking sitemap.xml…', '0 pages', '');
 
-  // BFS crawl
-  const queue   = [{ url: startUrl, depth: 0 }];
+  // ── Step 1: Try sitemap.xml to seed URL list ───────────────
+  let sitemapUrls = [];
+  try {
+    setProgress(5, 'Fetching sitemap.xml…', '0 pages', 'Trying sitemap.xml first…');
+    const sitemapHtml = await fetchViaProxy(origin + '/sitemap.xml');
+    sitemapUrls = parseSitemap(sitemapHtml, origin);
+    if (sitemapUrls.length > 0) {
+      setProgress(10, `Sitemap found — ${sitemapUrls.length} URLs`, '0 pages', `Sitemap has ${sitemapUrls.length} pages. Starting crawl…`);
+      await new Promise(r => setTimeout(r, 500));
+    }
+  } catch(e) {
+    setProgress(10, 'No sitemap found — crawling from homepage…', '0 pages', 'Starting BFS crawl…');
+  }
+
+  // ── Step 2: BFS crawl ──────────────────────────────────────
+  const queue   = [];
   const visited = new Set();
 
+  // Seed from sitemap if available, else start from homepage
+  if (sitemapUrls.length > 0) {
+    sitemapUrls.slice(0, MAX).forEach((u, i) => queue.push({ url: u, depth: i === 0 ? 0 : 1 }));
+    // Ensure start URL is first
+    if (!queue.find(q => q.url === startUrl)) queue.unshift({ url: startUrl, depth: 0 });
+  } else {
+    queue.push({ url: startUrl, depth: 0 });
+  }
+
   crawlData[startUrl] = { depth: 0, inbound: new Set(), outbound: [], status: 'root' };
+  let errors = 0;
 
   while (queue.length > 0 && visited.size < MAX) {
     const { url, depth } = queue.shift();
     if (visited.has(url)) continue;
     visited.add(url);
 
-    const done = visited.size;
-    const total = Math.max(queue.length + done, done);
-    const pct = Math.round((done / Math.min(total, MAX)) * 100);
-    setProgress(pct, `Crawling page ${done}…`, `${done} / ${Math.min(total, MAX)} pages`, url.replace(new URL(startUrl).origin, ''));
-
-    // Ensure entry exists
     if (!crawlData[url]) crawlData[url] = { depth, inbound: new Set(), outbound: [], status: 'ok' };
     crawlData[url].depth = depth;
 
+    const done  = visited.size;
+    const total = Math.min(Math.max(queue.length + done, done), MAX);
+    const pct   = Math.round(10 + (done / total) * 88);
+    setProgress(pct, `Crawling page ${done}…`, `${done} / ${total} pages`, url.replace(origin, '') || '/');
+
     try {
-      const html = await fetchViaProxy(url);
+      const html  = await fetchViaProxy(url);
       const links = extractLinks(html, url);
       crawlData[url].outbound = links;
 
       for (const link of links) {
-        if (!crawlData[link]) crawlData[link] = { depth: depth+1, inbound: new Set(), outbound: [], status: 'ok' };
+        if (!crawlData[link]) crawlData[link] = { depth: depth + 1, inbound: new Set(), outbound: [], status: 'ok' };
         crawlData[link].inbound.add(url);
-        if (!visited.has(link) && visited.size < MAX) {
+        if (!visited.has(link) && !queue.find(q => q.url === link) && visited.size + queue.length < MAX * 2) {
           queue.push({ url: link, depth: depth + 1 });
         }
       }
     } catch(e) {
+      errors++;
       crawlData[url].status = 'error';
-      log('Error fetching: ' + url.replace(new URL(startUrl).origin,''));
+      setProgress(pct, `Crawling page ${done}…`, `${done} / ${total} pages`, `⚠ Proxy blocked: ${url.replace(origin,'') || '/'}`);
     }
 
-    // Small delay to avoid hammering proxy
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 250));
+  }
+
+  if (visited.size <= 1 && errors > 0) {
+    setProgress(100, 'Crawl blocked ⚠', visited.size + ' pages', '');
+    document.getElementById('progressStatus').innerHTML =
+      '⚠ This site blocks CORS proxies (common on large JS-heavy sites like BankBazaar). ' +
+      'Try a smaller static site (e.g. your own portfolio, a blog, or a docs site).';
+    isCrawling = false;
+    document.getElementById('auditBtn').disabled = false;
+    document.getElementById('auditBtn').innerHTML = '<span>🔍</span> Start Audit';
+    return;
   }
 
   // ── Finalise data ──────────────────────────────────────────
