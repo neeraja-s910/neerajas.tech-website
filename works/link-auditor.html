@@ -142,6 +142,8 @@ tr:hover td{background:var(--paper2)}
   .btn-audit{width:100%;justify-content:center}
   th,td{padding:.6rem .75rem}
 }
+
+.badge.uncrawled{background:rgba(150,150,150,.1);color:#888;border:1px solid rgba(150,150,150,.25)}
 </style>
 </head>
 <body>
@@ -309,13 +311,14 @@ tr:hover td{background:var(--paper2)}
 
 </section>
 
+
 <script>
 // ── State ──────────────────────────────────────────────────────
 let crawlData = {};
 let crawlResults = [];
 let isCrawling = false;
 
-// ── CORS Proxies (tried in order) ──────────────────────────────
+// ── CORS Proxies ───────────────────────────────────────────────
 const PROXIES = [
   url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
@@ -325,10 +328,8 @@ const PROXIES = [
 async function fetchViaProxy(url) {
   for (let i = 0; i < PROXIES.length; i++) {
     try {
-      const proxyUrl = PROXIES[i](url);
-      const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+      const resp = await fetch(PROXIES[i](url), { signal: AbortSignal.timeout(10000) });
       if (!resp.ok) continue;
-      // allorigins returns JSON wrapper; others return raw HTML
       const text = await resp.text();
       try {
         const json = JSON.parse(text);
@@ -336,27 +337,36 @@ async function fetchViaProxy(url) {
       } catch(e) {
         if (text.length > 100) return text;
       }
-    } catch(e) { /* try next proxy */ }
+    } catch(e) { /* try next */ }
   }
-  throw new Error('All proxies failed for: ' + url);
+  throw new Error('All proxies failed');
+}
+
+// ── Normalise URL — consistent, no trailing slash ───────────────
+function normalise(url) {
+  try {
+    const u = new URL(url);
+    const path = u.pathname === '/' ? '' : u.pathname.replace(/\/$/, '');
+    return u.origin + path;
+  } catch(e) { return url; }
 }
 
 // ── Extract internal links from HTML ───────────────────────────
 function extractLinks(html, baseUrl) {
   const base = new URL(baseUrl);
   const links = new Set();
-  // Match href="..." and href='...' including relative paths
-  const re = /href=["'\s]([^"'>\s#]+)/gi;
+  const re = /href=["']([^"'>#\s][^"'>#]*)/gi;
   let m;
   while ((m = re.exec(html)) !== null) {
     try {
       const href = m[1].trim();
-      if (!href || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:') || href === '#') continue;
+      if (!href || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) continue;
       const abs = new URL(href, baseUrl);
       if (abs.hostname !== base.hostname) continue;
       if (/\.(pdf|jpg|jpeg|png|gif|svg|css|js|ico|woff|woff2|zip|xml|txt|mp4|webp)$/i.test(abs.pathname)) continue;
-      const clean = abs.origin + (abs.pathname.replace(/\/$/, '') || '/');
-      if (clean !== base.origin) links.add(clean);
+      // Use same normalise() function so URLs are always consistent
+      const clean = normalise(abs.href);
+      links.add(clean);
     } catch(e) {}
   }
   return [...links];
@@ -371,25 +381,17 @@ function parseSitemap(xml, origin) {
     try {
       const u = new URL(m[1].trim());
       if (u.origin === origin && !/\.(xml|pdf|jpg|jpeg|png|gif|svg|css|js)$/i.test(u.pathname)) {
-        urls.push(u.origin + (u.pathname.replace(/\/$/, '') || '/'));
+        urls.push(normalise(u.href));
       }
     } catch(e) {}
   }
   return [...new Set(urls)];
 }
 
-// ── Normalise URL ───────────────────────────────────────────────
-function normalise(url) {
-  try {
-    const u = new URL(url);
-    return u.origin + (u.pathname === '/' ? '' : u.pathname.replace(/\/$/, ''));
-  } catch(e) { return url; }
-}
-
 // ── UI helpers ──────────────────────────────────────────────────
 function setProgress(pct, status, count, logMsg) {
   document.getElementById('progressBar').style.width = pct + '%';
-  if (status) document.getElementById('progressStatus').textContent = status;
+  if (status !== undefined) document.getElementById('progressStatus').textContent = status;
   if (count !== undefined) document.getElementById('progressCount').textContent = count;
   if (logMsg !== undefined) document.getElementById('progressLog').textContent = '↳ ' + logMsg;
 }
@@ -404,12 +406,12 @@ async function startAudit() {
   let startUrl;
   try { startUrl = normalise(rawUrl); } catch(e) { alert('Invalid URL.'); return; }
 
-  const origin = new URL(startUrl).origin;
-  const MAX    = parseInt(document.getElementById('maxPages').value);
-  const OVER_T = parseInt(document.getElementById('overThreshold').value);
+  const origin  = new URL(startUrl).origin;
+  const MAX     = parseInt(document.getElementById('maxPages').value);
+  const OVER_T  = parseInt(document.getElementById('overThreshold').value);
 
-  isCrawling = true;
-  crawlData = {};
+  isCrawling  = true;
+  crawlData   = {};
   crawlResults = [];
   document.getElementById('auditBtn').disabled = true;
   document.getElementById('auditBtn').innerHTML = '⏳ Crawling…';
@@ -417,98 +419,121 @@ async function startAudit() {
   document.getElementById('resultsSection').classList.remove('show');
   setProgress(2, 'Checking sitemap.xml…', '0 pages', '');
 
-  // ── Step 1: Try sitemap.xml to seed URL list ───────────────
+  // ── Step 1: Try sitemap ────────────────────────────────────
   let sitemapUrls = [];
   try {
     setProgress(5, 'Fetching sitemap.xml…', '0 pages', 'Trying sitemap.xml first…');
-    const sitemapHtml = await fetchViaProxy(origin + '/sitemap.xml');
-    sitemapUrls = parseSitemap(sitemapHtml, origin);
+    const sitemapXml = await fetchViaProxy(origin + '/sitemap.xml');
+    sitemapUrls = parseSitemap(sitemapXml, origin);
     if (sitemapUrls.length > 0) {
-      setProgress(10, `Sitemap found — ${sitemapUrls.length} URLs`, '0 pages', `Sitemap has ${sitemapUrls.length} pages. Starting crawl…`);
-      await new Promise(r => setTimeout(r, 500));
+      setProgress(10, `Sitemap found — ${sitemapUrls.length} URLs`, '0 pages', `Seeding ${Math.min(sitemapUrls.length, MAX)} pages from sitemap…`);
     }
   } catch(e) {
-    setProgress(10, 'No sitemap found — crawling from homepage…', '0 pages', 'Starting BFS crawl…');
+    setProgress(10, 'No sitemap — starting BFS from homepage…', '0 pages', '');
   }
 
-  // ── Step 2: BFS crawl ──────────────────────────────────────
+  // ── Step 2: BFS crawl ─────────────────────────────────────
   const queue   = [];
   const visited = new Set();
 
-  // Seed from sitemap if available, else start from homepage
+  // Initialise crawlData for start URL
+  crawlData[startUrl] = { depth: 0, inbound: new Set(), outbound: [], crawled: false, status: 'root' };
+
   if (sitemapUrls.length > 0) {
-    sitemapUrls.slice(0, MAX).forEach((u, i) => queue.push({ url: u, depth: i === 0 ? 0 : 1 }));
-    // Ensure start URL is first
-    if (!queue.find(q => q.url === startUrl)) queue.unshift({ url: startUrl, depth: 0 });
+    // Seed sitemap URLs (all depth 1, except startUrl which is 0)
+    for (const u of sitemapUrls.slice(0, MAX)) {
+      if (u === startUrl) continue;
+      if (!crawlData[u]) crawlData[u] = { depth: 1, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
+      queue.push({ url: u, depth: 1 });
+    }
+    queue.unshift({ url: startUrl, depth: 0 }); // Start URL crawled first
   } else {
     queue.push({ url: startUrl, depth: 0 });
   }
 
-  crawlData[startUrl] = { depth: 0, inbound: new Set(), outbound: [], status: 'root' };
   let errors = 0;
+  let crawledCount = 0;
 
-  while (queue.length > 0 && visited.size < MAX) {
+  while (queue.length > 0 && crawledCount < MAX) {
     const { url, depth } = queue.shift();
     if (visited.has(url)) continue;
     visited.add(url);
 
-    if (!crawlData[url]) crawlData[url] = { depth, inbound: new Set(), outbound: [], status: 'ok' };
+    if (!crawlData[url]) crawlData[url] = { depth, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
     crawlData[url].depth = depth;
 
-    const done  = visited.size;
-    const total = Math.min(Math.max(queue.length + done, done), MAX);
-    const pct   = Math.round(10 + (done / total) * 88);
-    setProgress(pct, `Crawling page ${done}…`, `${done} / ${total} pages`, url.replace(origin, '') || '/');
+    const pct = Math.round(10 + (crawledCount / MAX) * 88);
+    const shortUrl = url.replace(origin, '') || '/';
+    setProgress(pct, `Crawling page ${crawledCount + 1}…`, `${crawledCount} / ${Math.min(queue.length + crawledCount + 1, MAX)} pages`, shortUrl);
 
     try {
       const html  = await fetchViaProxy(url);
       const links = extractLinks(html, url);
       crawlData[url].outbound = links;
+      crawlData[url].crawled  = true;
+      crawledCount++;
 
+      // Only add inbound links from pages we actually crawled
       for (const link of links) {
-        if (!crawlData[link]) crawlData[link] = { depth: depth + 1, inbound: new Set(), outbound: [], status: 'ok' };
-        crawlData[link].inbound.add(url);
-        if (!visited.has(link) && !queue.find(q => q.url === link) && visited.size + queue.length < MAX * 2) {
+        if (link === url) continue; // skip self-links
+        if (!crawlData[link]) crawlData[link] = { depth: depth + 1, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
+        crawlData[link].inbound.add(url); // Track which crawled page links here
+        // Add to queue only if within same origin and not yet visited
+        if (!visited.has(link) && !queue.find(q => q.url === link)) {
           queue.push({ url: link, depth: depth + 1 });
         }
       }
     } catch(e) {
       errors++;
-      crawlData[url].status = 'error';
-      setProgress(pct, `Crawling page ${done}…`, `${done} / ${total} pages`, `⚠ Proxy blocked: ${url.replace(origin,'') || '/'}`);
+      crawlData[url].crawled = false;
+      crawlData[url].status  = 'uncrawled';
+      crawledCount++; // Count as attempted
+      setProgress(pct, `Crawling…`, `${crawledCount} / ${Math.min(queue.length + crawledCount, MAX)} pages`, `⚠ Blocked: ${shortUrl}`);
     }
 
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r, 180));
   }
 
-  if (visited.size <= 1 && errors > 0) {
-    setProgress(100, 'Crawl blocked ⚠', visited.size + ' pages', '');
+  // Check if basically nothing was crawled
+  const actualCrawled = Object.values(crawlData).filter(d => d.crawled).length;
+  if (actualCrawled <= 1 && errors > 0) {
     document.getElementById('progressStatus').innerHTML =
-      '⚠ This site blocks CORS proxies (common on large JS-heavy sites like BankBazaar). ' +
-      'Try a smaller static site (e.g. your own portfolio, a blog, or a docs site).';
+      '⚠ <strong>This site blocks external crawlers.</strong> Try a WordPress blog, portfolio, or docs site instead.';
+    setProgress(100, '', errors + ' pages blocked', '');
     isCrawling = false;
     document.getElementById('auditBtn').disabled = false;
     document.getElementById('auditBtn').innerHTML = '<span>🔍</span> Start Audit';
     return;
   }
 
-  // ── Finalise data ──────────────────────────────────────────
-  setProgress(100, 'Building report…', visited.size + ' pages crawled', 'Analysing link structure…');
+  // ── Build results ──────────────────────────────────────────
+  setProgress(100, 'Building report…', crawledCount + ' pages crawled', 'Analysing link structure…');
   await new Promise(r => setTimeout(r, 400));
 
   crawlResults = [];
   for (const [url, d] of Object.entries(crawlData)) {
-    const inCount  = d.inbound.size;
+    const inCount  = d.inbound.size;  // Only counts inbound from crawled pages
     const outCount = d.outbound.length;
-    let status = 'ok';
-    if (url === startUrl) status = 'root';
-    else if (inCount === 0) status = 'orphan';
-    else if (inCount >= OVER_T) status = 'over';
-    crawlResults.push({ url, depth: d.depth, inbound: inCount, outbound: outCount, status });
+    let status = d.status;
+
+    if (!d.crawled && status !== 'root') {
+      status = 'uncrawled';
+    } else if (url === startUrl) {
+      status = 'root';
+    } else if (!d.crawled) {
+      status = 'uncrawled';
+    } else if (inCount === 0) {
+      status = 'orphan';
+    } else if (inCount >= OVER_T) {
+      status = 'over';
+    } else {
+      status = 'ok';
+    }
+
+    crawlResults.push({ url, depth: d.depth, inbound: inCount, outbound: outCount, status, crawled: d.crawled });
   }
 
   renderResults(OVER_T);
-
   isCrawling = false;
   document.getElementById('auditBtn').disabled = false;
   document.getElementById('auditBtn').innerHTML = '<span>🔍</span> Start Audit';
@@ -517,44 +542,48 @@ async function startAudit() {
 
 // ── Render results ──────────────────────────────────────────────
 function renderResults(overT) {
-  const all    = crawlResults;
-  const orphan = all.filter(r => r.status === 'orphan');
-  const over   = all.filter(r => r.status === 'over');
-  const deep   = all.filter(r => r.depth >= 3);
+  const all       = crawlResults;
+  const crawled   = all.filter(r => r.crawled || r.status === 'root');
+  const orphan    = all.filter(r => r.status === 'orphan');
+  const over      = all.filter(r => r.status === 'over');
+  const deep      = crawled.filter(r => r.depth >= 3);
+  const uncrawled = all.filter(r => r.status === 'uncrawled');
 
-  // Summary
-  const avgDepth = all.length ? (all.reduce((a,r)=>a+r.depth,0)/all.length).toFixed(1) : 0;
+  const avgDepth = crawled.length
+    ? (crawled.reduce((a, r) => a + r.depth, 0) / crawled.length).toFixed(1)
+    : 0;
+
   document.getElementById('summaryGrid').innerHTML = `
-    <div class="sum-card"><div class="sum-num teal">${all.length}</div><div class="sum-label">Total Pages</div></div>
+    <div class="sum-card"><div class="sum-num teal">${crawled.length}</div><div class="sum-label">Pages Crawled</div></div>
     <div class="sum-card"><div class="sum-num warn">${orphan.length}</div><div class="sum-label">Orphan Pages</div></div>
     <div class="sum-card"><div class="sum-num accent">${over.length}</div><div class="sum-label">Over-linked</div></div>
     <div class="sum-card"><div class="sum-num ok">${avgDepth}</div><div class="sum-label">Avg Depth</div></div>
+    ${uncrawled.length ? `<div class="sum-card"><div class="sum-num" style="color:#888">${uncrawled.length}</div><div class="sum-label">Not Crawled</div></div>` : ''}
   `;
 
-  document.getElementById('allTitle').textContent = `All Pages (${all.length})`;
-  document.getElementById('orphanTitle').textContent = `Orphan Pages (${orphan.length})`;
-  document.getElementById('overTitle').textContent = `Over-linked Pages (${over.length})`;
-  document.getElementById('deepTitle').textContent = `Deep Pages ≥3 (${deep.length})`;
+  document.getElementById('allTitle').textContent        = `All Pages (${all.length})`;
+  document.getElementById('orphanTitle').textContent     = `Orphan Pages (${orphan.length})`;
+  document.getElementById('overTitle').textContent       = `Over-linked Pages (${over.length})`;
+  document.getElementById('deepTitle').textContent       = `Deep Pages ≥3 (${deep.length})`;
 
-  // Tables
   fillTableAll(all);
   fillTableOrphan(orphan);
   fillTableOver(over);
   fillTableDeep(deep);
 
   document.getElementById('resultsSection').classList.add('show');
-  document.getElementById('resultsSection').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function statusBadge(status) {
   const map = {
-    root:   ['🏠 Root',   'root'],
-    ok:     ['✓ OK',      'ok'],
-    orphan: ['⚠ Orphan',  'orphan'],
-    over:   ['🔥 Over',   'over'],
-    error:  ['✗ Error',   'orphan'],
+    root:      ['🏠 Root',       'root'],
+    ok:        ['✓ OK',          'ok'],
+    orphan:    ['⚠ Orphan',      'orphan'],
+    over:      ['🔥 Over-linked','over'],
+    uncrawled: ['— Not crawled', 'uncrawled'],
   };
-  const [label, cls] = map[status] || ['—','ok'];
+  const [label, cls] = map[status] || ['—', 'ok'];
   return `<span class="badge ${cls}">${label}</span>`;
 }
 
@@ -565,7 +594,7 @@ function depthCell(depth) {
 
 function urlCell(url) {
   const short = url.replace(/^https?:\/\/[^/]+/, '') || '/';
-  return `<span class="url-cell" title="${url}"><a href="${url}" target="_blank" rel="noopener">${short || '/'}</a></span>`;
+  return `<span class="url-cell" title="${url}"><a href="${url}" target="_blank" rel="noopener">${short}</a></span>`;
 }
 
 function fillTableAll(rows) {
@@ -617,13 +646,13 @@ function emptyRow(cols, msg = 'No data available.') {
 
 // ── Tabs ────────────────────────────────────────────────────────
 function switchTab(name, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
 }
 
-// ── Sort table ──────────────────────────────────────────────────
+// ── Sort ────────────────────────────────────────────────────────
 const sortState = {};
 function sortTable(tableId, col) {
   const tbody = document.getElementById(tableId).querySelector('tbody');
@@ -631,12 +660,11 @@ function sortTable(tableId, col) {
   const key   = tableId + col;
   sortState[key] = !sortState[key];
   const asc = sortState[key];
-
   rows.sort((a, b) => {
     const av = a.cells[col]?.textContent.trim() || '';
     const bv = b.cells[col]?.textContent.trim() || '';
     const an = parseFloat(av), bn = parseFloat(bv);
-    if (!isNaN(an) && !isNaN(bn)) return asc ? an-bn : bn-an;
+    if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
     return asc ? av.localeCompare(bv) : bv.localeCompare(av);
   });
   rows.forEach(r => tbody.appendChild(r));
@@ -646,24 +674,22 @@ function sortTable(tableId, col) {
 function exportCSV(tab) {
   const sets = {
     all:    crawlResults,
-    orphan: crawlResults.filter(r=>r.status==='orphan'),
-    over:   crawlResults.filter(r=>r.status==='over'),
-    deep:   crawlResults.filter(r=>r.depth>=3),
+    orphan: crawlResults.filter(r => r.status === 'orphan'),
+    over:   crawlResults.filter(r => r.status === 'over'),
+    deep:   crawlResults.filter(r => r.depth >= 3 && r.crawled),
   };
   const rows = sets[tab] || crawlResults;
   if (!rows.length) { alert('No data to export.'); return; }
-
-  const header = 'URL,Depth,Inbound Links,Outbound Links,Status';
-  const lines  = rows.map(r => `"${r.url}",${r.depth},${r.inbound},${r.outbound},${r.status}`);
+  const header = 'URL,Depth,Inbound Links,Outbound Links,Status,Crawled';
+  const lines  = rows.map(r => `"${r.url}",${r.depth},${r.inbound},${r.outbound},${r.status},${r.crawled}`);
   const csv    = [header, ...lines].join('\n');
-  const blob   = new Blob([csv], {type:'text/csv'});
+  const blob   = new Blob([csv], { type: 'text/csv' });
   const a      = document.createElement('a');
   a.href       = URL.createObjectURL(blob);
   a.download   = `link-audit-${tab}-${Date.now()}.csv`;
   a.click();
 }
 
-// Enter key triggers audit
 document.getElementById('urlInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') startAudit();
 });
