@@ -178,7 +178,12 @@ tr:hover td{background:var(--paper2)}
       <span class="nav-last">Portfolio</span>
     </span>
   </a>
-  <a href="mailto:neerajashivakumar561@gmail.com" class="nav-cta">Hire Me ✉</a>
+  <div style="display:flex;align-items:center;gap:1rem">
+    <a href="seo-tools.html" style="font-size:.78rem;font-weight:600;color:rgba(255,255,255,.55);letter-spacing:.04em;transition:color .2s;display:flex;align-items:center;gap:5px" onmouseover="this.style.color='#E8A48A'" onmouseout="this.style.color='rgba(255,255,255,.55)'">
+      ← SEO Tools
+    </a>
+    <a href="mailto:neerajashivakumar561@gmail.com" class="nav-cta">Hire Me ✉</a>
+  </div>
 </nav>
 
 <!-- HERO -->
@@ -695,9 +700,4 @@ function renderResults(urls, crawledUrls, inbound, suggN) {
     // Find pages that should link here (top suggestions targeting this url)
     const refs = suggestions.filter(s => s.target === url).slice(0, 3);
     const refLinks = refs.map(r =>
-      `<span class="url-cell" style="display:block"><a href="${esc(r.source)}" target="_blank">${shortUrl(r.source)}</a></span>`
-    ).join('') || '<span style="font-size:.75rem;color:var(--ink4)">None found</span>';
-    const anchors = refs[0]?.anchors.map(a => `<span class="anchor-chip">${esc(a)}</span>`).join('') || '—';
-    return `<tr>
-      <td><span class="url-cell"><a href="${esc(url)}" target="_blank" rel="noopener">${shortUrl(url)}</a></span>
-          <span class="badge or
+      `<span class="url-cell" style="display:block"><a href="${esc(r.source)}" target="_blank">${shortUrl(r.source)}<
