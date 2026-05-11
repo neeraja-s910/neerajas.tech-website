@@ -189,7 +189,7 @@ tr:hover td{background:var(--paper2)}
       </button>
     </div>
     <div style="margin-top:.9rem;padding:.6rem 1rem;background:#FFF8E7;border:1px solid #F0D080;border-radius:10px;font-size:.75rem;color:#7A6010;line-height:1.6;">
-      ⚡ Works on <strong>any site with a sitemap</strong>. Uses sitemap.xml to discover all pages, then crawls what it can. Large JS-heavy sites may have partial data — inbound link counts are based on crawled pages.
+      ⚡ Works on <strong>any domain</strong> — uses the Wayback Machine + sitemap to discover pages, then crawls for link structure. Inbound link counts are based on crawled pages only.
     </div>
     <div class="options-row">
       <div class="opt-group">
@@ -322,47 +322,49 @@ tr:hover td{background:var(--paper2)}
 
 
 
+
 <script>
-// ── State ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  Internal Link Auditor — full rewrite
+//  URL discovery: Wayback Machine CDX + Sitemap + BFS
+//  Crawling: concurrent batches, 5-proxy fallback chain
+// ═══════════════════════════════════════════════════════════════
+
 let crawlData    = {};
 let crawlResults = [];
 let isCrawling   = false;
 
-// ── Proxies (tried in order per URL) ───────────────────────────
+// ── Proxy chain ────────────────────────────────────────────────
 const PROXIES = [
   u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
   u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
   u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  u => `https://api.allorigins.win/get?url=${encodeURIComponent('https://webcache.googleusercontent.com/search?q=cache:' + u)}`,
   u => `https://thingproxy.freeboard.io/fetch/${u}`,
+  u => `https://api.allorigins.win/get?url=${encodeURIComponent('https://webcache.googleusercontent.com/search?q=cache:' + u)}`,
 ];
 
-async function fetchViaProxy(url, timeoutMs = 12000) {
-  for (const proxy of PROXIES) {
+async function fetchViaProxy(url, ms = 12000) {
+  for (const p of PROXIES) {
     try {
-      const resp = await fetch(proxy(url), { signal: AbortSignal.timeout(timeoutMs) });
-      if (!resp.ok) continue;
-      const text = await resp.text();
-      try {
-        const json = JSON.parse(text);
-        if (json.contents && json.contents.length > 200) return json.contents;
-      } catch(e) {}
-      if (text.length > 200) return text;
-    } catch(e) { /* try next */ }
+      const r = await fetch(p(url), { signal: AbortSignal.timeout(ms) });
+      if (!r.ok) continue;
+      const t = await r.text();
+      try { const j = JSON.parse(t); if (j.contents?.length > 200) return j.contents; } catch(e){}
+      if (t.length > 200) return t;
+    } catch(e) {}
   }
-  throw new Error('All proxies failed for: ' + url);
+  throw new Error('blocked');
 }
 
-// ── Normalise URL — consistent, no trailing slash ───────────────
-function normalise(url) {
+// ── Normalise URL ──────────────────────────────────────────────
+function norm(url) {
   try {
     const u = new URL(url);
-    const path = u.pathname === '/' ? '' : u.pathname.replace(/\/$/, '');
-    return u.origin + path;
+    return u.origin + (u.pathname === '/' ? '' : u.pathname.replace(/\/$/, ''));
   } catch(e) { return url; }
 }
 
-// ── Extract internal links from HTML ───────────────────────────
+// ── Extract internal links ─────────────────────────────────────
 function extractLinks(html, baseUrl) {
   const base  = new URL(baseUrl);
   const links = new Set();
@@ -370,275 +372,232 @@ function extractLinks(html, baseUrl) {
   let m;
   while ((m = re.exec(html)) !== null) {
     try {
-      const href = m[1].trim();
-      if (!href || /^(mailto:|tel:|javascript:|#)/.test(href)) continue;
-      const abs = new URL(href, baseUrl);
+      const h = m[1].trim();
+      if (/^(mailto:|tel:|javascript:|#)/.test(h)) continue;
+      const abs = new URL(h, baseUrl);
       if (abs.hostname !== base.hostname) continue;
-      if (/\.(pdf|jpg|jpeg|png|gif|svg|css|js|ico|woff|woff2|zip|xml|txt|mp4|webp|json)$/i.test(abs.pathname)) continue;
-      const clean = normalise(abs.href);
-      links.add(clean);
+      if (/\.(pdf|jpg|jpeg|png|gif|svg|css|js|ico|woff2?|zip|xml|txt|mp4|webp|json)$/i.test(abs.pathname)) continue;
+      links.add(norm(abs.href));
     } catch(e) {}
   }
   return [...links];
 }
 
-// ── Recursive sitemap parser ────────────────────────────────────
-async function fetchAllSitemapUrls(origin, log) {
-  const allUrls = new Set();
-
-  async function parseSitemapXml(xml) {
-    // Sitemap index — contains <sitemap> entries with <loc>
-    const isIndex = xml.includes('<sitemapindex') || xml.includes('<sitemap>');
-    const locRe   = /<loc>\s*(https?:\/\/[^<\s]+)\s*<\/loc>/gi;
-    let m;
-    const locs = [];
-    while ((m = locRe.exec(xml)) !== null) locs.push(m[1].trim());
-
-    if (isIndex && xml.includes('<sitemapindex')) {
-      // It's an index — fetch each sub-sitemap
-      for (const loc of locs) {
-        if (/\.(xml|gz)$/i.test(loc)) {
-          try {
-            log('Fetching sub-sitemap: ' + loc.split('/').pop());
-            const sub = await fetchViaProxy(loc, 15000);
-            await parseSitemapXml(sub);
-          } catch(e) {}
+// ── Wayback Machine CDX — discovers ALL indexed URLs ───────────
+async function waybackUrls(domain, max, log) {
+  const base = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  // Strip www for broader match
+  const bare = base.replace(/^www\./, '');
+  const apiUrl = `https://web.archive.org/cdx/search/cdx?url=*.${bare}/*&output=json&fl=original&limit=${max * 3}&collapse=urlkey&filter=statuscode:200&matchType=domain`;
+  log('Querying Wayback Machine for ' + bare + '…');
+  try {
+    const resp = await fetch(apiUrl, { signal: AbortSignal.timeout(20000) });
+    if (!resp.ok) throw new Error('CDX HTTP ' + resp.status);
+    const rows = await resp.json();
+    const origin = new URL(domain).origin;
+    const urls   = [];
+    for (const row of rows.slice(1)) { // skip header row
+      try {
+        const u = new URL(row[0]);
+        if (u.hostname.endsWith(bare) && !/\.(pdf|jpg|jpeg|png|gif|svg|css|js|ico|woff|zip|xml|mp4|webp)$/i.test(u.pathname)) {
+          urls.push(norm(u.href));
         }
+      } catch(e) {}
+    }
+    const unique = [...new Set(urls)];
+    log(`Wayback Machine: ${unique.length} unique URLs found`);
+    return unique;
+  } catch(e) {
+    log('Wayback Machine unavailable: ' + e.message);
+    return [];
+  }
+}
+
+// ── Recursive sitemap parser ───────────────────────────────────
+async function sitemapUrls(origin, log) {
+  const all = new Set();
+  async function parse(xml) {
+    const isIndex = /<sitemapindex/i.test(xml);
+    const re = /<loc>\s*(https?:\/\/[^<\s]+)\s*<\/loc>/gi;
+    let m; const locs = [];
+    while ((m = re.exec(xml)) !== null) locs.push(m[1].trim());
+    if (isIndex) {
+      for (const loc of locs.filter(l => /\.(xml|gz)$/i.test(l))) {
+        try { log('Sub-sitemap: ' + loc.split('/').pop()); await parse(await fetchViaProxy(loc, 15000)); } catch(e) {}
       }
     } else {
-      // It's a regular sitemap — extract page URLs
       for (const loc of locs) {
         try {
           const u = new URL(loc);
-          if (u.origin === origin && !/\.(xml|pdf|jpg|jpeg|png|gif|svg|css|js|gz)$/i.test(u.pathname)) {
-            allUrls.add(normalise(u.href));
-          }
+          if (u.hostname === new URL(origin).hostname && !/\.(xml|pdf|jpg|png|gif|svg|css|js|gz)$/i.test(u.pathname)) all.add(norm(u.href));
         } catch(e) {}
       }
     }
   }
-
-  // Try common sitemap locations
-  const candidates = [
-    origin + '/sitemap.xml',
-    origin + '/sitemap_index.xml',
-    origin + '/sitemap-index.xml',
-    origin + '/sitemaps/sitemap.xml',
-  ];
-
-  // Also check robots.txt for Sitemap: directive
+  // robots.txt
   try {
-    const robots = await fetchViaProxy(origin + '/robots.txt', 8000);
-    const sitemapLines = robots.match(/^Sitemap:\s*(.+)$/gmi) || [];
-    for (const line of sitemapLines) {
-      const url = line.replace(/^Sitemap:\s*/i, '').trim();
-      if (url.startsWith('http')) candidates.unshift(url);
-    }
+    const robots = await fetchViaProxy(origin + '/robots.txt', 6000);
+    const found  = (robots.match(/^Sitemap:\s*(.+)$/gim) || []).map(l => l.replace(/^Sitemap:\s*/i, '').trim());
+    for (const sm of found) { try { await parse(await fetchViaProxy(sm, 15000)); } catch(e) {} }
   } catch(e) {}
-
-  for (const candidate of [...new Set(candidates)]) {
-    try {
-      log('Checking ' + candidate.split('/').pop() + '…');
-      const xml = await fetchViaProxy(candidate, 15000);
-      if (xml.includes('<url>') || xml.includes('<sitemap>') || xml.includes('<loc>')) {
-        await parseSitemapXml(xml);
-        if (allUrls.size > 0) break; // Found a good sitemap
-      }
-    } catch(e) {}
+  // Common locations
+  for (const p of ['/sitemap.xml', '/sitemap_index.xml', '/sitemaps/sitemap.xml']) {
+    if (all.size > 0) break;
+    try { const x = await fetchViaProxy(origin + p, 12000); if (x.includes('<loc>')) await parse(x); } catch(e) {}
   }
-
-  return [...allUrls];
+  log(`Sitemap: ${all.size} URLs`);
+  return [...all];
 }
 
-// ── UI helpers ──────────────────────────────────────────────────
-function setProgress(pct, status, count, logMsg) {
-  document.getElementById('progressBar').style.width = pct + '%';
-  if (status  !== undefined) document.getElementById('progressStatus').textContent = status;
-  if (count   !== undefined) document.getElementById('progressCount').textContent  = count;
-  if (logMsg  !== undefined) document.getElementById('progressLog').textContent    = '↳ ' + logMsg;
+// ── Progress helper ────────────────────────────────────────────
+function setP(pct, status, count, log) {
+  if (pct      !== undefined) document.getElementById('progressBar').style.width = pct + '%';
+  if (status   !== undefined) document.getElementById('progressStatus').textContent = status;
+  if (count    !== undefined) document.getElementById('progressCount').textContent  = count;
+  if (log      !== undefined) document.getElementById('progressLog').textContent    = '↳ ' + log;
 }
 
-// ── Concurrent batch fetch ──────────────────────────────────────
-async function crawlBatch(urls, origin, depth, concurrency) {
-  const results = [];
-  for (let i = 0; i < urls.length; i += concurrency) {
-    const batch = urls.slice(i, i + concurrency);
-    const settled = await Promise.allSettled(
-      batch.map(url => fetchViaProxy(url, 12000).then(html => ({ url, html, depth })))
-    );
-    results.push(...settled);
-    if (i + concurrency < urls.length) await new Promise(r => setTimeout(r, 300));
-  }
-  return results;
-}
-
-// ── Main crawl ──────────────────────────────────────────────────
+// ── Main ───────────────────────────────────────────────────────
 async function startAudit() {
   if (isCrawling) return;
-  let rawUrl = document.getElementById('urlInput').value.trim();
-  if (!rawUrl) { alert('Please enter a URL.'); return; }
-  if (!rawUrl.startsWith('http')) rawUrl = 'https://' + rawUrl;
-
+  let raw = document.getElementById('urlInput').value.trim();
+  if (!raw) { alert('Enter a URL'); return; }
+  if (!raw.startsWith('http')) raw = 'https://' + raw;
   let startUrl;
-  try { startUrl = normalise(rawUrl); } catch(e) { alert('Invalid URL.'); return; }
+  try { startUrl = norm(raw); } catch(e) { alert('Invalid URL'); return; }
 
   const origin      = new URL(startUrl).origin;
   const MAX         = parseInt(document.getElementById('maxPages').value);
-  const CONCURRENCY = parseInt(document.getElementById('concurrency').value);
+  const CONC        = parseInt(document.getElementById('concurrency').value);
   const OVER_T      = parseInt(document.getElementById('overThreshold').value);
 
-  isCrawling   = true;
-  crawlData    = {};
-  crawlResults = [];
-  document.getElementById('auditBtn').disabled     = true;
-  document.getElementById('auditBtn').innerHTML    = '⏳ Crawling…';
+  isCrawling = true; crawlData = {}; crawlResults = [];
+  document.getElementById('auditBtn').disabled  = true;
+  document.getElementById('auditBtn').innerHTML = '⏳ Crawling…';
   document.getElementById('progressWrap').classList.add('show');
   document.getElementById('resultsSection').classList.remove('show');
 
-  const logFn = msg => setProgress(undefined, undefined, undefined, msg);
+  const log = msg => setP(undefined, undefined, undefined, msg);
 
-  // ── Phase 1: Discover URLs via sitemap ────────────────────
-  setProgress(2, 'Discovering pages via sitemap…', '— pages', 'Checking robots.txt & sitemap…');
-  let sitemapUrls = [];
-  try {
-    sitemapUrls = await fetchAllSitemapUrls(origin, logFn);
-  } catch(e) {}
+  // ── Phase 1: Discover URLs ─────────────────────────────────
+  setP(2, 'Discovering pages…', '0 pages found', 'Querying Wayback Machine & sitemap…');
 
-  const totalKnown = sitemapUrls.length;
-  if (totalKnown > 0) {
-    setProgress(15, `Sitemap: ${totalKnown} pages found`, `0 / ${Math.min(totalKnown, MAX)} crawling`, `Starting crawl of up to ${MAX} pages…`);
-  } else {
-    setProgress(15, 'No sitemap — BFS crawl from homepage', '0 pages', 'Crawling from root…');
-  }
-  await new Promise(r => setTimeout(r, 300));
+  const [wbUrls, smUrls] = await Promise.all([
+    waybackUrls(startUrl, MAX * 5, log),
+    sitemapUrls(origin, log),
+  ]);
 
-  // ── Phase 2: Build crawl queue ────────────────────────────
+  // Merge: prefer Wayback (has real crawl history), fallback to sitemap
+  const merged   = [...new Set([startUrl, ...wbUrls, ...smUrls])];
+  const totalFound = merged.length;
+
+  setP(18, `Found ${totalFound} pages — now crawling…`, `0 / ${Math.min(totalFound, MAX)}`, `Wayback: ${wbUrls.length}  Sitemap: ${smUrls.length}`);
+  await new Promise(r => setTimeout(r, 400));
+
+  // ── Phase 2: Build queue ───────────────────────────────────
+  const seenQ   = new Set();
+  const queue   = [];
   const visited = new Set();
-  let queue = [];
 
-  // Always start with the root
-  crawlData[startUrl] = { depth: 0, inbound: new Set(), outbound: [], crawled: false, status: 'root' };
-  queue.push({ url: startUrl, depth: 0 });
+  crawlData[startUrl] = { depth: 0, inbound: new Set(), outbound: [], crawled: false };
+  queue.push({ url: startUrl, depth: 0 }); seenQ.add(startUrl);
 
-  if (totalKnown > 0) {
-    // Add sitemap URLs (up to MAX, depth=1, excluding start)
-    for (const u of sitemapUrls) {
-      if (u === startUrl) continue;
-      if (!crawlData[u]) crawlData[u] = { depth: 1, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
-      queue.push({ url: u, depth: 1 });
-      if (queue.length >= MAX + 5) break;
-    }
+  for (const u of merged) {
+    if (u === startUrl || seenQ.has(u)) continue;
+    crawlData[u] = { depth: 1, inbound: new Set(), outbound: [], crawled: false };
+    queue.push({ url: u, depth: 1 }); seenQ.add(u);
+    if (queue.length >= MAX) break;
   }
 
-  // Deduplicate queue
-  const seenQ = new Set();
-  queue = queue.filter(item => seenQ.has(item.url) ? false : (seenQ.add(item.url), true));
-
-  // ── Phase 3: Crawl in batches ─────────────────────────────
+  // ── Phase 3: Crawl in concurrent batches ──────────────────
   let crawledCount = 0;
-  let errors       = 0;
 
   while (queue.length > 0 && crawledCount < MAX) {
-    // Take next batch
-    const batch     = queue.splice(0, CONCURRENCY).filter(item => !visited.has(item.url));
-    const batchUrls = batch.map(b => b.url);
-    batchUrls.forEach(u => visited.add(u));
-    if (batch.length === 0) continue;
+    const batch = [];
+    while (batch.length < CONC && queue.length > 0 && crawledCount + batch.length < MAX) {
+      const item = queue.shift();
+      if (!visited.has(item.url)) { batch.push(item); visited.add(item.url); }
+    }
+    if (!batch.length) break;
 
-    const pct = Math.round(15 + (crawledCount / MAX) * 83);
-    setProgress(
-      pct,
+    const pct = Math.round(18 + (crawledCount / MAX) * 80);
+    setP(pct,
       `Crawling ${crawledCount + 1}–${Math.min(crawledCount + batch.length, MAX)} of ${Math.min(seenQ.size, MAX)}…`,
       `${crawledCount} / ${Math.min(seenQ.size, MAX)} pages`,
-      batchUrls.map(u => u.replace(origin, '') || '/').join(', ')
+      batch.map(b => (b.url.replace(origin,'') || '/')).join(' · ')
     );
 
     const settled = await Promise.allSettled(
-      batch.map(({ url, depth }) =>
-        fetchViaProxy(url, 12000).then(html => ({ url, html, depth }))
-      )
+      batch.map(({ url, depth }) => fetchViaProxy(url).then(html => ({ url, html, depth })))
     );
 
-    for (const result of settled) {
-      if (result.status === 'fulfilled') {
-        const { url, html, depth } = result.value;
-        if (!crawlData[url]) crawlData[url] = { depth, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
+    for (let i = 0; i < settled.length; i++) {
+      const { url, depth } = batch[i];
+      if (!crawlData[url]) crawlData[url] = { depth, inbound: new Set(), outbound: [], crawled: false };
+
+      if (settled[i].status === 'fulfilled') {
+        const { html } = settled[i].value;
         const links = extractLinks(html, url);
         crawlData[url].outbound = links;
         crawlData[url].crawled  = true;
         crawlData[url].depth    = depth;
-        crawledCount++;
 
-        // Update inbound for linked pages & discover new URLs
         for (const link of links) {
           if (link === url) continue;
-          if (!crawlData[link]) crawlData[link] = { depth: depth + 1, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
+          if (!crawlData[link]) crawlData[link] = { depth: depth + 1, inbound: new Set(), outbound: [], crawled: false };
           crawlData[link].inbound.add(url);
-          // Add to queue if not visited and not already queued
-          if (!visited.has(link) && !seenQ.has(link) && crawledCount + queue.length < MAX * 2) {
-            queue.push({ url: link, depth: depth + 1 });
-            seenQ.add(link);
+          if (!seenQ.has(link) && !visited.has(link) && seenQ.size < MAX * 2) {
+            queue.push({ url: link, depth: depth + 1 }); seenQ.add(link);
           }
         }
       } else {
-        const url   = batch[settled.indexOf(result)]?.url || '';
-        if (url) {
-          if (!crawlData[url]) crawlData[url] = { depth: 1, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
-          crawlData[url].crawled = false;
-        }
-        errors++;
-        crawledCount++;
+        crawlData[url].crawled = false;
       }
+      crawledCount++;
     }
 
-    await new Promise(r => setTimeout(r, 150));
+    await new Promise(r => setTimeout(r, 120));
   }
 
-  // ── Phase 4: Build results ────────────────────────────────
-  setProgress(100, 'Building report…', crawledCount + ' attempted', 'Analysing link structure…');
-  await new Promise(r => setTimeout(r, 400));
+  // ── Phase 4: Build results ─────────────────────────────────
+  setP(100, 'Building report…', crawledCount + ' attempted', 'Analysing…');
+  await new Promise(r => setTimeout(r, 300));
 
   crawlResults = [];
   for (const [url, d] of Object.entries(crawlData)) {
-    const inCount  = d.inbound.size;
-    const outCount = d.outbound.length;
+    const inb = d.inbound.size, outb = d.outbound.length;
     let status = 'ok';
-
     if (url === startUrl)   status = 'root';
     else if (!d.crawled)    status = 'uncrawled';
-    else if (inCount === 0) status = 'orphan';
-    else if (inCount >= OVER_T) status = 'over';
-
-    crawlResults.push({ url, depth: d.depth, inbound: inCount, outbound: outCount, status, crawled: d.crawled });
+    else if (inb === 0)     status = 'orphan';
+    else if (inb >= OVER_T) status = 'over';
+    crawlResults.push({ url, depth: d.depth, inbound: inb, outbound: outb, status, crawled: d.crawled });
   }
 
-  renderResults(OVER_T, totalKnown);
+  renderResults(OVER_T, totalFound);
   isCrawling = false;
   document.getElementById('auditBtn').disabled  = false;
   document.getElementById('auditBtn').innerHTML = '<span>🔍</span> Start Audit';
   document.getElementById('progressWrap').classList.remove('show');
 }
 
-// ── Render results ──────────────────────────────────────────────
-function renderResults(overT, totalKnown) {
+// ── Render ─────────────────────────────────────────────────────
+function renderResults(overT, totalFound) {
   const all       = crawlResults;
   const crawled   = all.filter(r => r.crawled || r.status === 'root');
   const orphan    = crawled.filter(r => r.status === 'orphan');
   const over      = crawled.filter(r => r.status === 'over');
   const deep      = crawled.filter(r => r.depth >= 3);
   const uncrawled = all.filter(r => r.status === 'uncrawled');
-
-  const avgDepth = crawled.length
-    ? (crawled.reduce((a, r) => a + r.depth, 0) / crawled.length).toFixed(1) : 0;
-
-  const coverage = totalKnown > 0 ? Math.round((crawled.length / totalKnown) * 100) + '%' : '—';
+  const avgDepth  = crawled.length ? (crawled.reduce((a,r)=>a+r.depth,0)/crawled.length).toFixed(1) : 0;
+  const coverage  = totalFound > 0 ? Math.round((crawled.length / totalFound) * 100) + '%' : '—';
 
   document.getElementById('summaryGrid').innerHTML = `
-    <div class="sum-card"><div class="sum-num teal">${totalKnown || all.length}</div><div class="sum-label">Pages Found</div></div>
-    <div class="sum-card"><div class="sum-num ok">${crawled.length}</div><div class="sum-label">Crawled (${coverage})</div></div>
+    <div class="sum-card"><div class="sum-num teal">${totalFound}</div><div class="sum-label">Pages Discovered</div></div>
+    <div class="sum-card"><div class="sum-num ok">${crawled.length} <span style="font-size:1rem;font-style:normal">(${coverage})</span></div><div class="sum-label">Successfully Crawled</div></div>
     <div class="sum-card"><div class="sum-num warn">${orphan.length}</div><div class="sum-label">Orphan Pages</div></div>
     <div class="sum-card"><div class="sum-num accent">${over.length}</div><div class="sum-label">Over-linked</div></div>
-    <div class="sum-card"><div class="sum-num" style="color:#888">${avgDepth}</div><div class="sum-label">Avg Depth</div></div>
+    <div class="sum-card"><div class="sum-num" style="color:#888">${avgDepth}</div><div class="sum-label">Avg Crawl Depth</div></div>
   `;
 
   document.getElementById('allTitle').textContent    = `All Pages (${all.length})`;
@@ -646,87 +605,80 @@ function renderResults(overT, totalKnown) {
   document.getElementById('overTitle').textContent   = `Over-linked (${over.length})`;
   document.getElementById('deepTitle').textContent   = `Deep Pages ≥3 (${deep.length})`;
 
-  fillTableAll(all);
-  fillTableOrphan(orphan);
-  fillTableOver(over);
-  fillTableDeep(deep);
+  fillTable('bodyAll',    all,     ['url','depth','inbound','outbound','status'], true);
+  fillTable('bodyOrphan', orphan,  ['url','depth','outbound','status'],           false);
+  fillTable('bodyOver',   over,    ['url','depth','inbound','outbound','status'], true);
+  fillTable('bodyDeep',   deep,    ['url','depth','inbound','outbound','status'], true);
 
   document.getElementById('resultsSection').classList.add('show');
-  document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('resultsSection').scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
 function statusBadge(s) {
-  const m = {
-    root:      ['🏠 Root',        'root'],
-    ok:        ['✓ OK',           'ok'],
-    orphan:    ['⚠ Orphan',       'orphan'],
-    over:      ['🔥 Over-linked', 'over'],
-    uncrawled: ['— Not crawled',  'uncrawled'],
-  };
-  const [label, cls] = m[s] || ['—', 'ok'];
-  return `<span class="badge ${cls}">${label}</span>`;
+  const m = { root:['🏠 Root','root'], ok:['✓ OK','ok'], orphan:['⚠ Orphan','orphan'], over:['🔥 Over-linked','over'], uncrawled:['— Not crawled','uncrawled'] };
+  const [l, c] = m[s] || ['—','ok'];
+  return `<span class="badge ${c}">${l}</span>`;
 }
-function depthCell(d) {
-  return `<span class="depth-dot"><span class="depth-bar" style="width:${Math.min(d*18,80)}px"></span>${d}</span>`;
-}
+function depthCell(d) { return `<span class="depth-dot"><span class="depth-bar" style="width:${Math.min(d*18,80)}px"></span>${d}</span>`; }
 function urlCell(url) {
-  const short = url.replace(/^https?:\/\/[^/]+/, '') || '/';
+  const short = url.replace(/^https?:\/\/[^/]+/,'') || '/';
   return `<span class="url-cell" title="${url}"><a href="${url}" target="_blank" rel="noopener">${short}</a></span>`;
 }
-function fillTableAll(rows) {
-  document.getElementById('bodyAll').innerHTML = rows.length
-    ? rows.map(r=>`<tr><td>${urlCell(r.url)}</td><td>${depthCell(r.depth)}</td><td><strong>${r.inbound}</strong></td><td>${r.outbound}</td><td>${statusBadge(r.status)}</td></tr>`).join('')
-    : emptyRow(5);
+
+function fillTable(tbodyId, rows, cols, hasInbound) {
+  if (!rows.length) {
+    const n = cols.length;
+    const msgs = { bodyOrphan:'🎉 No orphan pages!', bodyOver:'✅ No over-linked pages!', bodyDeep:'✅ No deep pages!' };
+    document.getElementById(tbodyId).innerHTML = `<tr><td colspan="${n}" style="text-align:center;padding:2rem;color:var(--ink3);font-size:.85rem;">${msgs[tbodyId]||'No data.'}</td></tr>`;
+    return;
+  }
+  document.getElementById(tbodyId).innerHTML = rows.map(r => {
+    const cells = cols.map(c => {
+      if (c === 'url')    return `<td>${urlCell(r.url)}</td>`;
+      if (c === 'depth')  return `<td>${depthCell(r.depth)}</td>`;
+      if (c === 'inbound') return `<td><strong>${r.inbound}</strong></td>`;
+      if (c === 'outbound') return `<td>${r.outbound}</td>`;
+      if (c === 'status') return `<td>${statusBadge(r.status)}</td>`;
+      return '<td>—</td>';
+    });
+    return `<tr>${cells.join('')}</tr>`;
+  }).join('');
 }
-function fillTableOrphan(rows) {
-  document.getElementById('bodyOrphan').innerHTML = rows.length
-    ? rows.map(r=>`<tr><td>${urlCell(r.url)}</td><td>${depthCell(r.depth)}</td><td>${r.outbound}</td><td>${statusBadge(r.status)}</td></tr>`).join('')
-    : emptyRow(4,'🎉 No orphan pages found!');
-}
-function fillTableOver(rows) {
-  document.getElementById('bodyOver').innerHTML = rows.length
-    ? rows.map(r=>`<tr><td>${urlCell(r.url)}</td><td>${depthCell(r.depth)}</td><td><strong>${r.inbound}</strong></td><td>${r.outbound}</td><td>${statusBadge(r.status)}</td></tr>`).join('')
-    : emptyRow(5,'✅ No over-linked pages found!');
-}
-function fillTableDeep(rows) {
-  document.getElementById('bodyDeep').innerHTML = rows.length
-    ? rows.map(r=>`<tr><td>${urlCell(r.url)}</td><td>${depthCell(r.depth)}</td><td>${r.inbound}</td><td>${r.outbound}</td><td>${statusBadge(r.status)}</td></tr>`).join('')
-    : emptyRow(5,'✅ No deep pages found!');
-}
-function emptyRow(cols, msg='No data available.') {
-  return `<tr><td colspan="${cols}" style="text-align:center;padding:2rem;color:var(--ink3);font-size:.85rem;">${msg}</td></tr>`;
-}
+
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('tab-'+name).classList.add('active');
 }
+
 const sortState = {};
 function sortTable(tableId, col) {
   const tbody = document.getElementById(tableId).querySelector('tbody');
   const rows  = [...tbody.querySelectorAll('tr')];
-  const key   = tableId+col;
+  const key   = tableId + col;
   sortState[key] = !sortState[key];
-  rows.sort((a,b)=>{
-    const av=a.cells[col]?.textContent.trim()||'', bv=b.cells[col]?.textContent.trim()||'';
-    const an=parseFloat(av), bn=parseFloat(bv);
-    if (!isNaN(an)&&!isNaN(bn)) return sortState[key]?an-bn:bn-an;
-    return sortState[key]?av.localeCompare(bv):bv.localeCompare(av);
+  rows.sort((a,b) => {
+    const av = a.cells[col]?.textContent.trim()||'', bv = b.cells[col]?.textContent.trim()||'';
+    const an = parseFloat(av), bn = parseFloat(bv);
+    if (!isNaN(an)&&!isNaN(bn)) return sortState[key] ? an-bn : bn-an;
+    return sortState[key] ? av.localeCompare(bv) : bv.localeCompare(av);
   });
   rows.forEach(r=>tbody.appendChild(r));
 }
+
 function exportCSV(tab) {
-  const sets={all:crawlResults,orphan:crawlResults.filter(r=>r.status==='orphan'),over:crawlResults.filter(r=>r.status==='over'),deep:crawlResults.filter(r=>r.depth>=3&&r.crawled)};
-  const rows=sets[tab]||crawlResults;
-  if(!rows.length){alert('No data to export.');return;}
-  const csv=['URL,Depth,Inbound Links,Outbound Links,Status,Crawled',...rows.map(r=>`"${r.url}",${r.depth},${r.inbound},${r.outbound},${r.status},${r.crawled}`)].join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=`link-audit-${tab}-${Date.now()}.csv`;
+  const sets = { all:crawlResults, orphan:crawlResults.filter(r=>r.status==='orphan'), over:crawlResults.filter(r=>r.status==='over'), deep:crawlResults.filter(r=>r.depth>=3&&r.crawled) };
+  const rows = sets[tab] || crawlResults;
+  if (!rows.length) { alert('No data to export.'); return; }
+  const csv = ['URL,Depth,Inbound Links,Outbound Links,Status,Crawled', ...rows.map(r=>`"${r.url}",${r.depth},${r.inbound},${r.outbound},${r.status},${r.crawled}`)].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = `link-audit-${tab}-${Date.now()}.csv`;
   a.click();
 }
-document.getElementById('urlInput').addEventListener('keydown',e=>{if(e.key==='Enter')startAudit();});
+
+document.getElementById('urlInput').addEventListener('keydown', e => { if (e.key==='Enter') startAudit(); });
 </script>
 
 </body>
