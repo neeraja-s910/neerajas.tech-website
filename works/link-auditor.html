@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Internal Link Auditor · S. Neeraja</title>
+<title>Internal Linking Suggestions · S. Neeraja</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,12 +57,26 @@ nav{position:fixed;top:0;left:0;right:0;z-index:400;height:62px;display:flex;ali
 .tool-section{padding:clamp(3rem,6vw,5rem) clamp(1.5rem,6vw,5rem);background:var(--paper)}
 
 /* INPUT CARD */
-.input-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:2rem;box-shadow:var(--shadow-lg);max-width:820px;margin:0 auto 2.5rem}
+.input-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:2rem;box-shadow:var(--shadow-lg);max-width:860px;margin:0 auto 2.5rem}
 .input-label{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:.6rem;display:block}
-.input-row{display:flex;gap:.75rem;flex-wrap:wrap}
-.url-input{flex:1;min-width:260px;border:1.5px solid var(--border);border-radius:100px;padding:12px 22px;font-family:var(--fb);font-size:.9rem;color:var(--ink);background:var(--paper);outline:none;transition:border-color .2s}
+
+/* INPUT TABS */
+.input-tabs{display:flex;gap:.4rem;margin-bottom:1.25rem;border-bottom:1.5px solid var(--border);padding-bottom:0}
+.itab{background:none;border:none;padding:8px 16px 10px;font-family:var(--fb);font-size:.78rem;font-weight:600;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1.5px;transition:all .2s}
+.itab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.itab:hover:not(.active){color:var(--ink2)}
+.itab-panel{display:none}
+.itab-panel.active{display:block}
+
+.url-input{width:100%;border:1.5px solid var(--border);border-radius:100px;padding:12px 22px;font-family:var(--fb);font-size:.9rem;color:var(--ink);background:var(--paper);outline:none;transition:border-color .2s}
 .url-input:focus{border-color:var(--accent)}
 .url-input::placeholder{color:var(--ink4)}
+
+.sitemap-textarea{width:100%;border:1.5px solid var(--border);border-radius:14px;padding:14px 18px;font-family:monospace;font-size:.78rem;color:var(--ink);background:var(--paper);outline:none;resize:vertical;min-height:140px;line-height:1.5;transition:border-color .2s}
+.sitemap-textarea:focus{border-color:var(--accent)}
+.sitemap-textarea::placeholder{color:var(--ink4)}
+
+.input-row{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:.8rem}
 .btn-audit{background:var(--accent);color:#fff;border:none;padding:12px 28px;border-radius:100px;font-family:var(--fb);font-size:.82rem;font-weight:700;letter-spacing:.04em;cursor:pointer;transition:all .25s;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}
 .btn-audit:hover:not(:disabled){background:#a34830;transform:translateY(-2px);box-shadow:0 8px 24px rgba(191,91,58,.35)}
 .btn-audit:disabled{opacity:.5;cursor:not-allowed;transform:none}
@@ -71,8 +85,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:400;height:62px;display:flex;ali
 .opt-label{font-size:.75rem;color:var(--ink3);font-weight:500}
 .opt-select{border:1.5px solid var(--border);border-radius:8px;padding:5px 10px;font-family:var(--fb);font-size:.78rem;color:var(--ink);background:var(--paper);outline:none;cursor:pointer}
 
+.hint-box{margin-top:.9rem;padding:.65rem 1rem;background:#F0F7F7;border:1px solid rgba(58,125,123,.2);border-radius:10px;font-size:.74rem;color:#2d5f5e;line-height:1.6}
+
 /* PROGRESS */
-.progress-wrap{display:none;max-width:820px;margin:0 auto 2rem}
+.progress-wrap{display:none;max-width:860px;margin:0 auto 2rem}
 .progress-wrap.show{display:block}
 .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
 .progress-status{font-size:.82rem;color:var(--ink2);font-weight:500}
@@ -82,7 +98,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:400;height:62px;display:flex;ali
 .progress-log{margin-top:.8rem;font-size:.72rem;color:var(--ink3);font-family:monospace;max-height:52px;overflow:hidden}
 
 /* SUMMARY CARDS */
-.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;max-width:820px;margin:0 auto 2rem}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;max-width:860px;margin:0 auto 2rem}
 .sum-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.25rem 1.5rem;box-shadow:var(--shadow)}
 .sum-num{font-family:var(--fd);font-size:2rem;font-style:italic;line-height:1;margin-bottom:.3rem}
 .sum-num.accent{color:var(--accent)}
@@ -92,13 +108,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:400;height:62px;display:flex;ali
 .sum-label{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
 
 /* TABS */
-.tabs-row{display:flex;gap:.5rem;max-width:820px;margin:0 auto 1.25rem;flex-wrap:wrap}
+.tabs-row{display:flex;gap:.5rem;max-width:860px;margin:0 auto 1.25rem;flex-wrap:wrap}
 .tab-btn{padding:7px 18px;border-radius:100px;border:1.5px solid var(--border);font-family:var(--fb);font-size:.74rem;font-weight:600;cursor:pointer;background:transparent;color:var(--ink3);transition:all .2s}
 .tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .tab-btn:hover:not(.active){border-color:var(--accent);color:var(--accent)}
 
 /* RESULTS TABLE */
-.table-wrap{max-width:820px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
+.table-wrap{max-width:860px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
 .table-toolbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:.75rem}
 .table-title{font-size:.82rem;font-weight:700;color:var(--ink2)}
 .btn-csv{background:var(--teal);color:#fff;border:none;padding:7px 18px;border-radius:100px;font-family:var(--fb);font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
@@ -108,24 +124,32 @@ table{width:100%;border-collapse:collapse;font-size:.8rem}
 th{padding:.7rem 1rem;text-align:left;font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);border-bottom:1px solid var(--border);background:var(--paper2);white-space:nowrap;cursor:pointer;user-select:none}
 th:hover{color:var(--accent)}
 th.sorted{color:var(--accent)}
-th .sort-arrow{margin-left:4px;opacity:.5}
-td{padding:.7rem 1rem;border-bottom:1px solid rgba(24,18,14,.05);color:var(--ink2);vertical-align:middle;max-width:260px;word-break:break-all}
+td{padding:.7rem 1rem;border-bottom:1px solid rgba(24,18,14,.05);color:var(--ink2);vertical-align:top;max-width:280px}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--paper2)}
-.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:.65rem;font-weight:700;letter-spacing:.06em;white-space:nowrap}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:.63rem;font-weight:700;letter-spacing:.06em;white-space:nowrap}
 .badge.orphan{background:rgba(214,136,16,.1);color:#D68910;border:1px solid rgba(214,136,16,.2)}
-.badge.over{background:rgba(192,57,43,.1);color:#C0392B;border:1px solid rgba(192,57,43,.2)}
 .badge.ok{background:rgba(39,174,96,.1);color:#27AE60;border:1px solid rgba(39,174,96,.2)}
-.badge.root{background:rgba(58,125,123,.1);color:var(--teal);border:1px solid rgba(58,125,123,.2)}
-.url-cell{font-family:monospace;font-size:.72rem;color:var(--accent);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.badge.high{background:rgba(191,91,58,.1);color:var(--accent);border:1px solid rgba(191,91,58,.2)}
+.badge.med{background:rgba(58,125,123,.1);color:var(--teal);border:1px solid rgba(58,125,123,.2)}
+.badge.low{background:rgba(150,150,150,.1);color:#888;border:1px solid rgba(150,150,150,.25)}
+
+.url-cell{font-family:monospace;font-size:.7rem;color:var(--accent);word-break:break-all;line-height:1.5}
 .url-cell a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
-.depth-dot{display:inline-flex;align-items:center;gap:3px}
-.depth-bar{display:inline-block;height:8px;border-radius:100px;background:var(--accent-mid);vertical-align:middle;margin-right:4px}
+.anchor-chip{display:inline-block;background:var(--paper2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:.68rem;font-family:monospace;color:var(--ink2);margin:2px 3px 2px 0}
+
+/* SUGGESTION CARD (mobile-friendly view inside table) */
+.sugg-list{display:flex;flex-direction:column;gap:4px}
+.sugg-item{display:flex;flex-direction:column;gap:2px;padding:6px 0;border-bottom:1px solid rgba(24,18,14,.04)}
+.sugg-item:last-child{border-bottom:none}
+.sugg-target{font-family:monospace;font-size:.68rem;color:var(--teal);word-break:break-all}
+.sugg-anchors{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
 
 /* EMPTY STATE */
 .empty-state{text-align:center;padding:4rem 2rem;color:var(--ink3)}
 .empty-state .icon{font-size:2.5rem;margin-bottom:1rem;display:block}
-.empty-state p{font-size:.9rem;max-width:320px;margin:0 auto}
+.empty-state p{font-size:.9rem;max-width:360px;margin:0 auto;line-height:1.8}
 
 /* HIDDEN */
 .results-section{display:none}
@@ -138,12 +162,9 @@ tr:hover td{background:var(--paper2)}
 
 @media(max-width:600px){
   .hero-title{font-size:2rem}
-  .input-row{flex-direction:column}
   .btn-audit{width:100%;justify-content:center}
   th,td{padding:.6rem .75rem}
 }
-
-.badge.uncrawled{background:rgba(150,150,150,.1);color:#888;border:1px solid rgba(150,150,150,.25)}
 </style>
 </head>
 <body>
@@ -165,12 +186,12 @@ tr:hover td{background:var(--paper2)}
   <div class="hero-glow"><div class="g1"></div><div class="g2"></div></div>
   <div class="hero-content">
     <div class="hero-badge"><span class="badge-dot"></span> SEO Tool</div>
-    <h1 class="hero-title">Internal Link<br><em>Auditor</em></h1>
-    <p class="hero-desc">Crawl any domain and map its internal link structure. Spot orphan pages, thin link clusters, and over-linked pages — all in a visual table you can export.</p>
+    <h1 class="hero-title">Internal Linking<br><em>Suggestions</em></h1>
+    <p class="hero-desc">Paste your sitemap, and the tool scans each page's content to suggest which pages should link to which — complete with anchor text recommendations and orphan page detection.</p>
     <div class="hero-tags">
-      <span class="hero-tag">Link Map</span>
+      <span class="hero-tag">Link Suggestions</span>
+      <span class="hero-tag">Anchor Texts</span>
       <span class="hero-tag">Orphan Pages</span>
-      <span class="hero-tag">Crawl Depth</span>
       <span class="hero-tag">CSV Export</span>
     </div>
   </div>
@@ -179,507 +200,504 @@ tr:hover td{background:var(--paper2)}
 <!-- TOOL -->
 <section class="tool-section">
 
-  <!-- Input -->
+  <!-- Input Card -->
   <div class="input-card">
-    <label class="input-label">Enter Domain URL</label>
+    <div class="input-tabs">
+      <button class="itab active" onclick="switchInputTab('url')">🔗 Sitemap URL</button>
+      <button class="itab" onclick="switchInputTab('xml')">📋 Paste Sitemap XML</button>
+    </div>
+
+    <!-- Tab: URL -->
+    <div class="itab-panel active" id="tab-url">
+      <label class="input-label">Sitemap URL</label>
+      <input type="url" id="sitemapUrl" class="url-input" placeholder="https://example.com/sitemap.xml" autocomplete="off" spellcheck="false">
+    </div>
+
+    <!-- Tab: Paste XML -->
+    <div class="itab-panel" id="tab-xml">
+      <label class="input-label">Paste Sitemap XML</label>
+      <textarea id="sitemapXml" class="sitemap-textarea" placeholder="<?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?>&#10;<urlset xmlns=&quot;http://www.sitemaps.org/schemas/sitemap/0.9&quot;>&#10;  <url><loc>https://example.com/</loc></url>&#10;  <url><loc>https://example.com/about/</loc></url>&#10;  ...&#10;</urlset>"></textarea>
+    </div>
+
     <div class="input-row">
-      <input type="url" id="urlInput" class="url-input" placeholder="https://example.com" autocomplete="off" spellcheck="false">
-      <button class="btn-audit" id="auditBtn" onclick="startAudit()">
-        <span>🔍</span> Start Audit
+      <button class="btn-audit" id="analyzeBtn" onclick="startAnalysis()">
+        <span>🔍</span> Analyze Links
       </button>
     </div>
-    <div style="margin-top:.9rem;padding:.6rem 1rem;background:#FFF8E7;border:1px solid #F0D080;border-radius:10px;font-size:.75rem;color:#7A6010;line-height:1.6;">
-      ⚡ Works on <strong>any domain</strong> — uses the Wayback Machine + sitemap to discover pages, then crawls for link structure. Inbound link counts are based on crawled pages only.
-    </div>
+
     <div class="options-row">
       <div class="opt-group">
         <label class="opt-label">Max pages:</label>
         <select class="opt-select" id="maxPages">
-          <option value="50">50</option>
-          <option value="100" selected>100</option>
+          <option value="20">20</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
           <option value="200">200</option>
-          <option value="500">500</option>
         </select>
       </div>
       <div class="opt-group">
-        <label class="opt-label">Concurrency:</label>
-        <select class="opt-select" id="concurrency">
-          <option value="2">2 at a time</option>
-          <option value="3" selected>3 at a time</option>
-          <option value="5">5 at a time</option>
+        <label class="opt-label">Suggestions per page:</label>
+        <select class="opt-select" id="suggCount">
+          <option value="3">3</option>
+          <option value="5" selected>5</option>
+          <option value="10">10</option>
         </select>
       </div>
-      <div class="opt-group">
-        <label class="opt-label">Over-linked threshold:</label>
-        <select class="opt-select" id="overThreshold">
-          <option value="5">5+ inbound</option>
-          <option value="10" selected>10+ inbound</option>
-          <option value="20">20+ inbound</option>
-          <option value="50">50+ inbound</option>
-        </select>
-      </div>
+    </div>
+
+    <div class="hint-box">
+      💡 The tool fetches each page, extracts content, and uses keyword analysis to surface the most relevant internal linking opportunities you're currently missing.
     </div>
   </div>
 
   <!-- Progress -->
   <div class="progress-wrap" id="progressWrap">
     <div class="progress-header">
-      <span class="progress-status" id="progressStatus">Starting crawl…</span>
-      <span class="progress-count" id="progressCount">0 / 0 pages</span>
+      <span class="progress-status" id="progressStatus">Fetching sitemap…</span>
+      <span class="progress-count" id="progressCount"></span>
     </div>
-    <div class="progress-bar-outer">
-      <div class="progress-bar-fill" id="progressBar"></div>
-    </div>
+    <div class="progress-bar-outer"><div class="progress-bar-fill" id="progressBar"></div></div>
     <div class="progress-log" id="progressLog"></div>
   </div>
 
-  <!-- Summary -->
-  <div class="results-section" id="resultsSection">
+  <!-- Results -->
+  <div class="results-section fade-in" id="resultsSection">
+
+    <!-- Summary -->
     <div class="summary-grid" id="summaryGrid"></div>
 
     <!-- Tabs -->
     <div class="tabs-row">
-      <button class="tab-btn active" onclick="switchTab('all',this)">All Pages</button>
-      <button class="tab-btn" onclick="switchTab('orphan',this)">🟡 Orphan Pages</button>
-      <button class="tab-btn" onclick="switchTab('over',this)">🔴 Over-linked</button>
-      <button class="tab-btn" onclick="switchTab('deep',this)">🔵 Deep Pages (≥3)</button>
+      <button class="tab-btn active" onclick="switchTab('suggestions')">💡 Link Suggestions</button>
+      <button class="tab-btn" onclick="switchTab('orphans')">🏚️ Orphan Pages</button>
+      <button class="tab-btn" onclick="switchTab('allpages')">📄 All Pages</button>
     </div>
 
-    <!-- Table: All -->
-    <div class="tab-panel active" id="tab-all">
+    <!-- Suggestions Tab -->
+    <div class="tab-panel active" id="tab-suggestions">
       <div class="table-wrap">
         <div class="table-toolbar">
-          <span class="table-title" id="allTitle">All Pages</span>
-          <button class="btn-csv" onclick="exportCSV('all')">⬇ Export CSV</button>
+          <span class="table-title" id="suggTableTitle">Link Suggestions</span>
+          <button class="btn-csv" onclick="exportCSV('suggestions')">⬇ Export CSV</button>
         </div>
         <div class="table-scroll">
-          <table id="tableAll">
+          <table>
             <thead>
               <tr>
-                <th onclick="sortTable('tableAll',0)">URL <span class="sort-arrow">↕</span></th>
-                <th onclick="sortTable('tableAll',1)">Depth <span class="sort-arrow">↕</span></th>
-                <th onclick="sortTable('tableAll',2)">Inbound <span class="sort-arrow">↕</span></th>
-                <th onclick="sortTable('tableAll',3)">Outbound <span class="sort-arrow">↕</span></th>
-                <th>Status</th>
+                <th>Source Page</th>
+                <th>Add a Link To</th>
+                <th>Suggested Anchor Texts</th>
+                <th>Match</th>
               </tr>
             </thead>
-            <tbody id="bodyAll"></tbody>
+            <tbody id="suggBody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Table: Orphan -->
-    <div class="tab-panel" id="tab-orphan">
+    <!-- Orphans Tab -->
+    <div class="tab-panel" id="tab-orphans">
       <div class="table-wrap">
         <div class="table-toolbar">
-          <span class="table-title" id="orphanTitle">Orphan Pages</span>
-          <button class="btn-csv" onclick="exportCSV('orphan')">⬇ Export CSV</button>
+          <span class="table-title" id="orphanTableTitle">Orphan Pages</span>
+          <button class="btn-csv" onclick="exportCSV('orphans')">⬇ Export CSV</button>
         </div>
         <div class="table-scroll">
-          <table id="tableOrphan">
-            <thead><tr><th>URL</th><th>Depth</th><th>Outbound</th><th>Status</th></tr></thead>
-            <tbody id="bodyOrphan"></tbody>
+          <table>
+            <thead>
+              <tr>
+                <th>Orphan Page</th>
+                <th>Pages That Could Link Here</th>
+                <th>Suggested Anchors</th>
+              </tr>
+            </thead>
+            <tbody id="orphanBody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Table: Over-linked -->
-    <div class="tab-panel" id="tab-over">
+    <!-- All Pages Tab -->
+    <div class="tab-panel" id="tab-allpages">
       <div class="table-wrap">
         <div class="table-toolbar">
-          <span class="table-title" id="overTitle">Over-linked Pages</span>
-          <button class="btn-csv" onclick="exportCSV('over')">⬇ Export CSV</button>
+          <span class="table-title">All Analyzed Pages</span>
+          <button class="btn-csv" onclick="exportCSV('allpages')">⬇ Export CSV</button>
         </div>
         <div class="table-scroll">
-          <table id="tableOver">
-            <thead><tr><th>URL</th><th>Depth</th><th>Inbound</th><th>Outbound</th><th>Status</th></tr></thead>
-            <tbody id="bodyOver"></tbody>
+          <table>
+            <thead>
+              <tr>
+                <th>Page URL</th>
+                <th>Title</th>
+                <th>Inbound Links</th>
+                <th>Outbound Links</th>
+                <th>Status</th>
+                <th>Top Keywords</th>
+              </tr>
+            </thead>
+            <tbody id="allBody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Table: Deep -->
-    <div class="tab-panel" id="tab-deep">
-      <div class="table-wrap">
-        <div class="table-toolbar">
-          <span class="table-title" id="deepTitle">Deep Pages</span>
-          <button class="btn-csv" onclick="exportCSV('deep')">⬇ Export CSV</button>
-        </div>
-        <div class="table-scroll">
-          <table id="tableDeep">
-            <thead><tr><th>URL</th><th>Depth</th><th>Inbound</th><th>Outbound</th><th>Status</th></tr></thead>
-            <tbody id="bodyDeep"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
+  </div><!-- /results-section -->
 </section>
 
-
-
-
 <script>
-// ═══════════════════════════════════════════════════════════════
-//  Internal Link Auditor — full rewrite
-//  URL discovery: Wayback Machine CDX + Sitemap + BFS
-//  Crawling: concurrent batches, 5-proxy fallback chain
-// ═══════════════════════════════════════════════════════════════
-
-let crawlData    = {};
-let crawlResults = [];
-let isCrawling   = false;
-
-// ── Proxy chain ────────────────────────────────────────────────
+// ─── Config ────────────────────────────────────────────────────────────────
 const PROXIES = [
   u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
   u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
   u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
   u => `https://thingproxy.freeboard.io/fetch/${u}`,
-  u => `https://api.allorigins.win/get?url=${encodeURIComponent('https://webcache.googleusercontent.com/search?q=cache:' + u)}`,
 ];
 
-async function fetchViaProxy(url, ms = 12000) {
-  for (const p of PROXIES) {
-    try {
-      const r = await fetch(p(url), { signal: AbortSignal.timeout(ms) });
-      if (!r.ok) continue;
-      const t = await r.text();
-      try { const j = JSON.parse(t); if (j.contents?.length > 200) return j.contents; } catch(e){}
-      if (t.length > 200) return t;
-    } catch(e) {}
-  }
-  throw new Error('blocked');
+const STOP_WORDS = new Set([
+  'a','an','the','and','or','but','in','on','at','to','for','of','with',
+  'by','from','as','is','it','its','be','was','are','were','been','have',
+  'has','had','do','does','did','will','would','could','should','may',
+  'might','this','that','these','those','i','we','you','he','she','they',
+  'what','which','who','when','where','how','all','some','any','more',
+  'also','not','no','so','if','then','than','into','out','up','about',
+  'get','can','just','their','there','here','our','your','my','his','her',
+  'new','use','used','page','pages','website','site','content','click',
+  'read','more','menu','home','back','next','prev','search','sign','log',
+]);
+
+// ─── State ─────────────────────────────────────────────────────────────────
+let pageData = {};       // url → { title, text, tokens, links }
+let tfidfScores = {};    // url → { term: score }
+let suggestions = [];    // [{ source, target, anchors, score }]
+let activeInputTab = 'url';
+let currentTab = 'suggestions';
+
+// ─── Input Tab ─────────────────────────────────────────────────────────────
+function switchInputTab(t) {
+  activeInputTab = t;
+  document.querySelectorAll('.itab').forEach((el,i) => el.classList.toggle('active', (i===0&&t==='url')||(i===1&&t==='xml')));
+  document.getElementById('tab-url').classList.toggle('active', t==='url');
+  document.getElementById('tab-xml').classList.toggle('active', t==='xml');
 }
 
-// ── Normalise URL ──────────────────────────────────────────────
-function norm(url) {
+// ─── Result Tab ────────────────────────────────────────────────────────────
+function switchTab(t) {
+  currentTab = t;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('tab-' + t).classList.add('active');
+}
+
+// ─── Proxy Fetch ───────────────────────────────────────────────────────────
+async function fetchViaProxy(url) {
+  for (const proxyFn of PROXIES) {
+    try {
+      const proxyUrl = proxyFn(url);
+      const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
+      if (!resp.ok) continue;
+      const data = await resp.json().catch(() => null);
+      const html = data ? (data.contents || data.body || '') : await resp.text();
+      if (html && html.length > 200) return html;
+    } catch(e) { /* try next */ }
+  }
+  return null;
+}
+
+// ─── Sitemap Parsing ───────────────────────────────────────────────────────
+function parseUrlsFromXml(xml) {
+  const urls = [];
+  const locs = xml.match(/<loc[^>]*>([\s\S]*?)<\/loc>/gi) || [];
+  for (const m of locs) {
+    const u = m.replace(/<\/?loc[^>]*>/gi,'').trim();
+    if (u.startsWith('http')) urls.push(u);
+  }
+  return [...new Set(urls)];
+}
+
+async function fetchSitemap(url) {
+  // Try direct fetch first (works if same origin or no CORS)
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (r.ok) {
+      const xml = await r.text();
+      if (xml.includes('<loc>') || xml.includes('<urlset')) return xml;
+    }
+  } catch(e) {}
+  // Fallback: proxy
+  const html = await fetchViaProxy(url);
+  return html;
+}
+
+// ─── Text Extraction ───────────────────────────────────────────────────────
+function extractContent(html, baseUrl) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Title
+  const title = (doc.querySelector('title')||{}).textContent || '';
+
+  // Remove nav/script/style/footer/header noise
+  ['script','style','nav','footer','header','noscript','svg'].forEach(tag => {
+    doc.querySelectorAll(tag).forEach(el => el.remove());
+  });
+
+  // Body text (prioritise main/article)
+  const main = doc.querySelector('main, article, [role="main"], #content, .content') || doc.body;
+  const text = (main || doc.body || doc.documentElement).textContent
+    .replace(/\s+/g,' ').replace(/[^\w\s]/g,' ').trim();
+
+  // Internal links
+  const links = new Set();
+  const base = new URL(baseUrl);
+  doc.querySelectorAll('a[href]').forEach(a => {
+    try {
+      const abs = new URL(a.getAttribute('href'), baseUrl);
+      if (abs.hostname === base.hostname && !abs.href.match(/\.(pdf|jpg|png|gif|svg|webp|mp4|zip|xml|css|js)(\?|$)/i)) {
+        links.add(normUrl(abs.href));
+      }
+    } catch(e) {}
+  });
+
+  return { title: title.trim(), text, links };
+}
+
+function normUrl(url) {
   try {
     const u = new URL(url);
     return u.origin + (u.pathname === '/' ? '' : u.pathname.replace(/\/$/, ''));
   } catch(e) { return url; }
 }
 
-// ── Extract internal links ─────────────────────────────────────
-function extractLinks(html, baseUrl) {
-  const base  = new URL(baseUrl);
-  const links = new Set();
-  const re    = /href=["']([^"'>#\s][^"'>#]*)/gi;
-  let m;
-  while ((m = re.exec(html)) !== null) {
-    try {
-      const h = m[1].trim();
-      if (/^(mailto:|tel:|javascript:|#)/.test(h)) continue;
-      const abs = new URL(h, baseUrl);
-      if (abs.hostname !== base.hostname) continue;
-      if (/\.(pdf|jpg|jpeg|png|gif|svg|css|js|ico|woff2?|zip|xml|txt|mp4|webp|json)$/i.test(abs.pathname)) continue;
-      links.add(norm(abs.href));
-    } catch(e) {}
-  }
-  return [...links];
+// ─── Tokenize + TF-IDF ─────────────────────────────────────────────────────
+function tokenize(text) {
+  return text.toLowerCase()
+    .split(/\W+/)
+    .filter(w => w.length > 3 && !STOP_WORDS.has(w) && !/^\d+$/.test(w));
 }
 
-// ── Wayback Machine CDX — discovers ALL indexed URLs ───────────
-async function waybackUrls(domain, max, log) {
-  const base = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  // Strip www for broader match
-  const bare = base.replace(/^www\./, '');
-  const apiUrl = `https://web.archive.org/cdx/search/cdx?url=*.${bare}/*&output=json&fl=original&limit=${max * 3}&collapse=urlkey&filter=statuscode:200&matchType=domain`;
-  log('Querying Wayback Machine for ' + bare + '…');
-  try {
-    const resp = await fetch(apiUrl, { signal: AbortSignal.timeout(20000) });
-    if (!resp.ok) throw new Error('CDX HTTP ' + resp.status);
-    const rows = await resp.json();
-    const origin = new URL(domain).origin;
-    const urls   = [];
-    for (const row of rows.slice(1)) { // skip header row
-      try {
-        const u = new URL(row[0]);
-        if (u.hostname.endsWith(bare) && !/\.(pdf|jpg|jpeg|png|gif|svg|css|js|ico|woff|zip|xml|mp4|webp)$/i.test(u.pathname)) {
-          urls.push(norm(u.href));
-        }
-      } catch(e) {}
-    }
-    const unique = [...new Set(urls)];
-    log(`Wayback Machine: ${unique.length} unique URLs found`);
-    return unique;
-  } catch(e) {
-    log('Wayback Machine unavailable: ' + e.message);
-    return [];
-  }
-}
+function buildTFIDF(corpus) {
+  // corpus: { url: tokens[] }
+  const urls = Object.keys(corpus);
+  const N = urls.length;
+  const df = {}; // term → doc count
 
-// ── Recursive sitemap parser ───────────────────────────────────
-async function sitemapUrls(origin, log) {
-  const all = new Set();
-  async function parse(xml) {
-    const isIndex = /<sitemapindex/i.test(xml);
-    const re = /<loc>\s*(https?:\/\/[^<\s]+)\s*<\/loc>/gi;
-    let m; const locs = [];
-    while ((m = re.exec(xml)) !== null) locs.push(m[1].trim());
-    if (isIndex) {
-      for (const loc of locs.filter(l => /\.(xml|gz)$/i.test(l))) {
-        try { log('Sub-sitemap: ' + loc.split('/').pop()); await parse(await fetchViaProxy(loc, 15000)); } catch(e) {}
-      }
-    } else {
-      for (const loc of locs) {
-        try {
-          const u = new URL(loc);
-          if (u.hostname === new URL(origin).hostname && !/\.(xml|pdf|jpg|png|gif|svg|css|js|gz)$/i.test(u.pathname)) all.add(norm(u.href));
-        } catch(e) {}
-      }
+  // Build DF
+  for (const url of urls) {
+    const unique = new Set(corpus[url]);
+    for (const term of unique) df[term] = (df[term] || 0) + 1;
+  }
+
+  // Build TF-IDF per doc
+  const scores = {};
+  for (const url of urls) {
+    const tokens = corpus[url];
+    const tf = {};
+    for (const t of tokens) tf[t] = (tf[t] || 0) + 1;
+    const total = tokens.length || 1;
+    scores[url] = {};
+    for (const [term, cnt] of Object.entries(tf)) {
+      const idf = Math.log((N + 1) / ((df[term] || 0) + 1));
+      scores[url][term] = (cnt / total) * idf;
     }
   }
-  // robots.txt
-  try {
-    const robots = await fetchViaProxy(origin + '/robots.txt', 6000);
-    const found  = (robots.match(/^Sitemap:\s*(.+)$/gim) || []).map(l => l.replace(/^Sitemap:\s*/i, '').trim());
-    for (const sm of found) { try { await parse(await fetchViaProxy(sm, 15000)); } catch(e) {} }
-  } catch(e) {}
-  // Common locations
-  for (const p of ['/sitemap.xml', '/sitemap_index.xml', '/sitemaps/sitemap.xml']) {
-    if (all.size > 0) break;
-    try { const x = await fetchViaProxy(origin + p, 12000); if (x.includes('<loc>')) await parse(x); } catch(e) {}
+  return scores;
+}
+
+function topTerms(scoreMap, n = 15) {
+  return Object.entries(scoreMap)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0, n)
+    .map(([t]) => t);
+}
+
+function cosineSim(vecA, vecB) {
+  // vecA, vecB: { term: score }
+  const termsA = Object.keys(vecA);
+  let dot = 0, magA = 0, magB = 0;
+  for (const t of termsA) {
+    dot += (vecA[t] || 0) * (vecB[t] || 0);
+    magA += vecA[t] ** 2;
   }
-  log(`Sitemap: ${all.size} URLs`);
-  return [...all];
+  for (const v of Object.values(vecB)) magB += v ** 2;
+  if (!magA || !magB) return 0;
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
 }
 
-// ── Progress helper ────────────────────────────────────────────
-function setP(pct, status, count, log) {
-  if (pct      !== undefined) document.getElementById('progressBar').style.width = pct + '%';
-  if (status   !== undefined) document.getElementById('progressStatus').textContent = status;
-  if (count    !== undefined) document.getElementById('progressCount').textContent  = count;
-  if (log      !== undefined) document.getElementById('progressLog').textContent    = '↳ ' + log;
-}
+// ─── Main Analysis ─────────────────────────────────────────────────────────
+async function startAnalysis() {
+  pageData = {}; tfidfScores = {}; suggestions = [];
+  const MAX = parseInt(document.getElementById('maxPages').value);
+  const SUGG_N = parseInt(document.getElementById('suggCount').value);
 
-// ── Main ───────────────────────────────────────────────────────
-async function startAudit() {
-  if (isCrawling) return;
-  let raw = document.getElementById('urlInput').value.trim();
-  if (!raw) { alert('Enter a URL'); return; }
-  if (!raw.startsWith('http')) raw = 'https://' + raw;
-  let startUrl;
-  try { startUrl = norm(raw); } catch(e) { alert('Invalid URL'); return; }
-
-  const origin      = new URL(startUrl).origin;
-  const MAX         = parseInt(document.getElementById('maxPages').value);
-  const CONC        = parseInt(document.getElementById('concurrency').value);
-  const OVER_T      = parseInt(document.getElementById('overThreshold').value);
-
-  isCrawling = true; crawlData = {}; crawlResults = [];
-  document.getElementById('auditBtn').disabled  = true;
-  document.getElementById('auditBtn').innerHTML = '⏳ Crawling…';
-  document.getElementById('progressWrap').classList.add('show');
+  // Reset UI
+  document.getElementById('analyzeBtn').disabled = true;
   document.getElementById('resultsSection').classList.remove('show');
+  showProgress('Fetching sitemap…', 0, MAX);
 
-  const log = msg => setP(undefined, undefined, undefined, msg);
-
-  // ── Phase 1: Discover URLs ─────────────────────────────────
-  setP(2, 'Discovering pages…', '0 pages found', 'Querying Wayback Machine & sitemap…');
-
-  const [wbUrls, smUrls] = await Promise.all([
-    waybackUrls(startUrl, MAX * 5, log),
-    sitemapUrls(origin, log),
-  ]);
-
-  // Merge: prefer Wayback (has real crawl history), fallback to sitemap
-  const merged   = [...new Set([startUrl, ...wbUrls, ...smUrls])];
-  const totalFound = merged.length;
-
-  setP(18, `Found ${totalFound} pages — now crawling…`, `0 / ${Math.min(totalFound, MAX)}`, `Wayback: ${wbUrls.length}  Sitemap: ${smUrls.length}`);
-  await new Promise(r => setTimeout(r, 400));
-
-  // ── Phase 2: Build queue ───────────────────────────────────
-  const seenQ   = new Set();
-  const queue   = [];
-  const visited = new Set();
-
-  crawlData[startUrl] = { depth: 0, inbound: new Set(), outbound: [], crawled: false };
-  queue.push({ url: startUrl, depth: 0 }); seenQ.add(startUrl);
-
-  for (const u of merged) {
-    if (u === startUrl || seenQ.has(u)) continue;
-    crawlData[u] = { depth: 1, inbound: new Set(), outbound: [], crawled: false };
-    queue.push({ url: u, depth: 1 }); seenQ.add(u);
-    if (queue.length >= MAX) break;
-  }
-
-  // ── Phase 3: Crawl in concurrent batches ──────────────────
-  let crawledCount = 0;
-
-  while (queue.length > 0 && crawledCount < MAX) {
-    const batch = [];
-    while (batch.length < CONC && queue.length > 0 && crawledCount + batch.length < MAX) {
-      const item = queue.shift();
-      if (!visited.has(item.url)) { batch.push(item); visited.add(item.url); }
-    }
-    if (!batch.length) break;
-
-    const pct = Math.round(18 + (crawledCount / MAX) * 80);
-    setP(pct,
-      `Crawling ${crawledCount + 1}–${Math.min(crawledCount + batch.length, MAX)} of ${Math.min(seenQ.size, MAX)}…`,
-      `${crawledCount} / ${Math.min(seenQ.size, MAX)} pages`,
-      batch.map(b => (b.url.replace(origin,'') || '/')).join(' · ')
-    );
-
-    const settled = await Promise.allSettled(
-      batch.map(({ url, depth }) => fetchViaProxy(url).then(html => ({ url, html, depth })))
-    );
-
-    for (let i = 0; i < settled.length; i++) {
-      const { url, depth } = batch[i];
-      if (!crawlData[url]) crawlData[url] = { depth, inbound: new Set(), outbound: [], crawled: false };
-
-      if (settled[i].status === 'fulfilled') {
-        const { html } = settled[i].value;
-        const links = extractLinks(html, url);
-        crawlData[url].outbound = links;
-        crawlData[url].crawled  = true;
-        crawlData[url].depth    = depth;
-
-        for (const link of links) {
-          if (link === url) continue;
-          if (!crawlData[link]) crawlData[link] = { depth: depth + 1, inbound: new Set(), outbound: [], crawled: false };
-          crawlData[link].inbound.add(url);
-          if (!seenQ.has(link) && !visited.has(link) && seenQ.size < MAX * 2) {
-            queue.push({ url: link, depth: depth + 1 }); seenQ.add(link);
-          }
+  // ── Step 1: Get sitemap URLs ──────────────────────────────────────────────
+  let urls = [];
+  try {
+    if (activeInputTab === 'xml') {
+      const xml = document.getElementById('sitemapXml').value.trim();
+      if (!xml) { alert('Please paste your sitemap XML.'); resetBtn(); return; }
+      urls = parseUrlsFromXml(xml);
+    } else {
+      const sitemapUrl = document.getElementById('sitemapUrl').value.trim();
+      if (!sitemapUrl) { alert('Please enter a sitemap URL.'); resetBtn(); return; }
+      log('Fetching ' + sitemapUrl);
+      const xml = await fetchSitemap(sitemapUrl);
+      if (!xml) { alert('Could not fetch the sitemap. Try pasting the XML directly.'); resetBtn(); return; }
+      urls = parseUrlsFromXml(xml);
+      // Handle sitemap index (nested sitemaps)
+      if (urls.some(u => u.includes('sitemap'))) {
+        const subUrls = [];
+        for (const su of urls.filter(u => u.includes('sitemap')).slice(0,5)) {
+          const subXml = await fetchSitemap(su);
+          if (subXml) subUrls.push(...parseUrlsFromXml(subXml));
         }
-      } else {
-        crawlData[url].crawled = false;
+        urls = [...urls.filter(u => !u.includes('sitemap')), ...subUrls];
       }
-      crawledCount++;
     }
-
-    await new Promise(r => setTimeout(r, 120));
+  } catch(e) {
+    alert('Error reading sitemap: ' + e.message);
+    resetBtn(); return;
   }
 
-  // ── Phase 4: Build results ─────────────────────────────────
-  setP(100, 'Building report…', crawledCount + ' attempted', 'Analysing…');
-  await new Promise(r => setTimeout(r, 300));
-
-  crawlResults = [];
-  for (const [url, d] of Object.entries(crawlData)) {
-    const inb = d.inbound.size, outb = d.outbound.length;
-    let status = 'ok';
-    if (url === startUrl)   status = 'root';
-    else if (!d.crawled)    status = 'uncrawled';
-    else if (inb === 0)     status = 'orphan';
-    else if (inb >= OVER_T) status = 'over';
-    crawlResults.push({ url, depth: d.depth, inbound: inb, outbound: outb, status, crawled: d.crawled });
+  urls = [...new Set(urls.map(normUrl))].slice(0, MAX);
+  if (urls.length < 2) {
+    alert('Need at least 2 pages to generate link suggestions. Check your sitemap.');
+    resetBtn(); return;
   }
 
-  renderResults(OVER_T, totalFound);
-  isCrawling = false;
-  document.getElementById('auditBtn').disabled  = false;
-  document.getElementById('auditBtn').innerHTML = '<span>🔍</span> Start Audit';
-  document.getElementById('progressWrap').classList.remove('show');
+  log(`Found ${urls.length} URLs`);
+
+  // ── Step 2: Crawl pages ───────────────────────────────────────────────────
+  const CONCURRENCY = 3;
+  let done = 0;
+
+  async function crawlOne(url) {
+    log(`Fetching: ${url}`);
+    const html = await fetchViaProxy(url);
+    if (!html) {
+      pageData[url] = { title: url, text: '', tokens: [], links: new Set(), crawled: false };
+      return;
+    }
+    const { title, text, links } = extractContent(html, url);
+    const tokens = tokenize(text + ' ' + title + ' ' + title); // boost title weight
+    pageData[url] = { title, text: text.slice(0, 5000), tokens, links, crawled: true };
+    done++;
+    setProgress(`Crawling pages… (${done}/${urls.length})`, done, urls.length);
+  }
+
+  for (let i = 0; i < urls.length; i += CONCURRENCY) {
+    await Promise.allSettled(urls.slice(i, i + CONCURRENCY).map(crawlOne));
+  }
+
+  // ── Step 3: Build TF-IDF ─────────────────────────────────────────────────
+  setProgress('Analyzing content…', urls.length, urls.length);
+  const corpus = {};
+  for (const [url, d] of Object.entries(pageData)) {
+    if (d.crawled) corpus[url] = d.tokens;
+  }
+  tfidfScores = buildTFIDF(corpus);
+
+  // ── Step 4: Find link suggestions ─────────────────────────────────────────
+  setProgress('Finding link opportunities…', urls.length, urls.length);
+  suggestions = [];
+  const crawledUrls = urls.filter(u => pageData[u]?.crawled);
+
+  for (const src of crawledUrls) {
+    const existingLinks = pageData[src].links;
+    const simScores = [];
+    for (const tgt of crawledUrls) {
+      if (tgt === src) continue;
+      if (existingLinks.has(tgt)) continue; // already linked
+      const sim = cosineSim(tfidfScores[src] || {}, tfidfScores[tgt] || {});
+      if (sim > 0.01) simScores.push({ tgt, sim });
+    }
+    simScores.sort((a,b) => b.sim - a.sim);
+    for (const { tgt, sim } of simScores.slice(0, SUGG_N)) {
+      // Anchor texts = top shared terms between source and target
+      const srcTerms = new Set(topTerms(tfidfScores[src] || {}, 20));
+      const tgtTerms = topTerms(tfidfScores[tgt] || {}, 20);
+      const shared = tgtTerms.filter(t => srcTerms.has(t)).slice(0, 4);
+      // Also add target page title keywords
+      const titleKws = tokenize(pageData[tgt].title || '').slice(0, 3);
+      const anchors = [...new Set([...titleKws, ...shared])].slice(0, 5);
+      suggestions.push({ source: src, target: tgt, anchors, score: sim });
+    }
+  }
+
+  // ── Step 5: Build inbound map ──────────────────────────────────────────────
+  const inbound = {};
+  for (const url of urls) inbound[url] = [];
+  for (const url of crawledUrls) {
+    for (const linked of pageData[url].links) {
+      if (inbound[linked] !== undefined) inbound[linked].push(url);
+    }
+  }
+
+  // ── Step 6: Render ─────────────────────────────────────────────────────────
+  hideProgress();
+  renderResults(urls, crawledUrls, inbound, SUGG_N);
+  document.getElementById('analyzeBtn').disabled = false;
 }
 
-// ── Render ─────────────────────────────────────────────────────
-function renderResults(overT, totalFound) {
-  const all       = crawlResults;
-  const crawled   = all.filter(r => r.crawled || r.status === 'root');
-  const orphan    = crawled.filter(r => r.status === 'orphan');
-  const over      = crawled.filter(r => r.status === 'over');
-  const deep      = crawled.filter(r => r.depth >= 3);
-  const uncrawled = all.filter(r => r.status === 'uncrawled');
-  const avgDepth  = crawled.length ? (crawled.reduce((a,r)=>a+r.depth,0)/crawled.length).toFixed(1) : 0;
-  const coverage  = totalFound > 0 ? Math.round((crawled.length / totalFound) * 100) + '%' : '—';
+// ─── Render ────────────────────────────────────────────────────────────────
+function renderResults(urls, crawledUrls, inbound, suggN) {
+  const orphans = crawledUrls.filter(u => inbound[u].length === 0);
+  const totalSugg = suggestions.length;
 
+  // Summary cards
   document.getElementById('summaryGrid').innerHTML = `
-    <div class="sum-card"><div class="sum-num teal">${totalFound}</div><div class="sum-label">Pages Discovered</div></div>
-    <div class="sum-card"><div class="sum-num ok">${crawled.length} <span style="font-size:1rem;font-style:normal">(${coverage})</span></div><div class="sum-label">Successfully Crawled</div></div>
-    <div class="sum-card"><div class="sum-num warn">${orphan.length}</div><div class="sum-label">Orphan Pages</div></div>
-    <div class="sum-card"><div class="sum-num accent">${over.length}</div><div class="sum-label">Over-linked</div></div>
-    <div class="sum-card"><div class="sum-num" style="color:#888">${avgDepth}</div><div class="sum-label">Avg Crawl Depth</div></div>
+    <div class="sum-card"><div class="sum-num ok">${crawledUrls.length}</div><div class="sum-label">Pages Crawled</div></div>
+    <div class="sum-card"><div class="sum-num accent">${totalSugg}</div><div class="sum-label">Link Opportunities</div></div>
+    <div class="sum-card"><div class="sum-num warn">${orphans.length}</div><div class="sum-label">Orphan Pages</div></div>
+    <div class="sum-card"><div class="sum-num teal">${urls.length - crawledUrls.length}</div><div class="sum-label">Unreachable Pages</div></div>
   `;
 
-  document.getElementById('allTitle').textContent    = `All Pages (${all.length})`;
-  document.getElementById('orphanTitle').textContent = `Orphan Pages (${orphan.length})`;
-  document.getElementById('overTitle').textContent   = `Over-linked (${over.length})`;
-  document.getElementById('deepTitle').textContent   = `Deep Pages ≥3 (${deep.length})`;
-
-  fillTable('bodyAll',    all,     ['url','depth','inbound','outbound','status'], true);
-  fillTable('bodyOrphan', orphan,  ['url','depth','outbound','status'],           false);
-  fillTable('bodyOver',   over,    ['url','depth','inbound','outbound','status'], true);
-  fillTable('bodyDeep',   deep,    ['url','depth','inbound','outbound','status'], true);
-
-  document.getElementById('resultsSection').classList.add('show');
-  document.getElementById('resultsSection').scrollIntoView({ behavior:'smooth', block:'start' });
-}
-
-function statusBadge(s) {
-  const m = { root:['🏠 Root','root'], ok:['✓ OK','ok'], orphan:['⚠ Orphan','orphan'], over:['🔥 Over-linked','over'], uncrawled:['— Not crawled','uncrawled'] };
-  const [l, c] = m[s] || ['—','ok'];
-  return `<span class="badge ${c}">${l}</span>`;
-}
-function depthCell(d) { return `<span class="depth-dot"><span class="depth-bar" style="width:${Math.min(d*18,80)}px"></span>${d}</span>`; }
-function urlCell(url) {
-  const short = url.replace(/^https?:\/\/[^/]+/,'') || '/';
-  return `<span class="url-cell" title="${url}"><a href="${url}" target="_blank" rel="noopener">${short}</a></span>`;
-}
-
-function fillTable(tbodyId, rows, cols, hasInbound) {
-  if (!rows.length) {
-    const n = cols.length;
-    const msgs = { bodyOrphan:'🎉 No orphan pages!', bodyOver:'✅ No over-linked pages!', bodyDeep:'✅ No deep pages!' };
-    document.getElementById(tbodyId).innerHTML = `<tr><td colspan="${n}" style="text-align:center;padding:2rem;color:var(--ink3);font-size:.85rem;">${msgs[tbodyId]||'No data.'}</td></tr>`;
-    return;
+  // Suggestions table (grouped by source)
+  const srcMap = {};
+  for (const s of suggestions) {
+    if (!srcMap[s.source]) srcMap[s.source] = [];
+    srcMap[s.source].push(s);
   }
-  document.getElementById(tbodyId).innerHTML = rows.map(r => {
-    const cells = cols.map(c => {
-      if (c === 'url')    return `<td>${urlCell(r.url)}</td>`;
-      if (c === 'depth')  return `<td>${depthCell(r.depth)}</td>`;
-      if (c === 'inbound') return `<td><strong>${r.inbound}</strong></td>`;
-      if (c === 'outbound') return `<td>${r.outbound}</td>`;
-      if (c === 'status') return `<td>${statusBadge(r.status)}</td>`;
-      return '<td>—</td>';
-    });
-    return `<tr>${cells.join('')}</tr>`;
+
+  document.getElementById('suggTableTitle').textContent = `${totalSugg} Link Opportunities across ${Object.keys(srcMap).length} pages`;
+
+  const suggRows = Object.entries(srcMap).map(([src, items]) => {
+    const suggList = items.map(s => {
+      const lvl = s.score > 0.15 ? 'high' : s.score > 0.06 ? 'med' : 'low';
+      const lvlLabel = s.score > 0.15 ? 'High' : s.score > 0.06 ? 'Med' : 'Low';
+      const anchors = s.anchors.map(a => `<span class="anchor-chip">${esc(a)}</span>`).join('');
+      return `<div class="sugg-item">
+        <div class="sugg-target"><a href="${esc(s.target)}" target="_blank" rel="noopener">${shortUrl(s.target)}</a>
+          <span class="badge ${lvl}" style="margin-left:6px">${lvlLabel}</span>
+        </div>
+        <div class="sugg-anchors">${anchors || '<span style="font-size:.7rem;color:var(--ink4)">—</span>'}</div>
+      </div>`;
+    }).join('');
+    return `<tr>
+      <td><span class="url-cell"><a href="${esc(src)}" target="_blank" rel="noopener">${shortUrl(src)}</a></span></td>
+      <td><div class="sugg-list">${suggList}</div></td>
+      <td colspan="2"></td>
+    </tr>`;
   }).join('');
-}
 
-function switchTab(name, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tab-'+name).classList.add('active');
-}
+  document.getElementById('suggBody').innerHTML = suggRows || emptyRow('No link opportunities found. Try crawling more pages.');
 
-const sortState = {};
-function sortTable(tableId, col) {
-  const tbody = document.getElementById(tableId).querySelector('tbody');
-  const rows  = [...tbody.querySelectorAll('tr')];
-  const key   = tableId + col;
-  sortState[key] = !sortState[key];
-  rows.sort((a,b) => {
-    const av = a.cells[col]?.textContent.trim()||'', bv = b.cells[col]?.textContent.trim()||'';
-    const an = parseFloat(av), bn = parseFloat(bv);
-    if (!isNaN(an)&&!isNaN(bn)) return sortState[key] ? an-bn : bn-an;
-    return sortState[key] ? av.localeCompare(bv) : bv.localeCompare(av);
-  });
-  rows.forEach(r=>tbody.appendChild(r));
-}
-
-function exportCSV(tab) {
-  const sets = { all:crawlResults, orphan:crawlResults.filter(r=>r.status==='orphan'), over:crawlResults.filter(r=>r.status==='over'), deep:crawlResults.filter(r=>r.depth>=3&&r.crawled) };
-  const rows = sets[tab] || crawlResults;
-  if (!rows.length) { alert('No data to export.'); return; }
-  const csv = ['URL,Depth,Inbound Links,Outbound Links,Status,Crawled', ...rows.map(r=>`"${r.url}",${r.depth},${r.inbound},${r.outbound},${r.status},${r.crawled}`)].join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download = `link-audit-${tab}-${Date.now()}.csv`;
-  a.click();
-}
-
-document.getElementById('urlInput').addEventListener('keydown', e => { if (e.key==='Enter') startAudit(); });
-</script>
-
-</body>
-</html>
+  // Orphans table
+  document.getElementById('orphanTableTitle').textContent = `${orphans.length} Orphan Pages`;
+  const orphanRows = orphans.map(url => {
+    // Find pages that should link here (top suggestions targeting this url)
+    const refs = suggestions.filter(s => s.target === url).slice(0, 3);
+    const refLinks = refs.map(r =>
+      `<span class="url-cell" style="display:block"><a href="${esc(r.source)}" target="_blank">${shortUrl(r.source)}</a></span>`
+    ).join('') || '<span style="font-size:.75rem;color:var(--ink4)">None found</span>';
+    const anchors = refs[0]?.anchors.map(a => `<span class="anchor-chip">${esc(a)}</span>`).join('') || '—';
+    return `<tr>
+      <td><span class="url-cell"><a href="${esc(url)}" target="_blank" rel="noopener">${shortUrl(url)}</a></span>
+          <span class="badge or
