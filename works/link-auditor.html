@@ -189,24 +189,33 @@ tr:hover td{background:var(--paper2)}
       </button>
     </div>
     <div style="margin-top:.9rem;padding:.6rem 1rem;background:#FFF8E7;border:1px solid #F0D080;border-radius:10px;font-size:.75rem;color:#7A6010;line-height:1.6;">
-      ⚡ <strong>Best for static/CMS sites</strong> (WordPress, Webflow, blogs, portfolios). Large JS-heavy sites (BankBazaar, Amazon etc.) block external crawlers — try your own site or a client's site instead.
+      ⚡ Works on <strong>any site with a sitemap</strong>. Uses sitemap.xml to discover all pages, then crawls what it can. Large JS-heavy sites may have partial data — inbound link counts are based on crawled pages.
     </div>
     <div class="options-row">
       <div class="opt-group">
         <label class="opt-label">Max pages:</label>
         <select class="opt-select" id="maxPages">
-          <option value="20">20</option>
-          <option value="40" selected>40</option>
-          <option value="60">60</option>
-          <option value="100">100</option>
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="200">200</option>
+          <option value="500">500</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <label class="opt-label">Concurrency:</label>
+        <select class="opt-select" id="concurrency">
+          <option value="2">2 at a time</option>
+          <option value="3" selected>3 at a time</option>
+          <option value="5">5 at a time</option>
         </select>
       </div>
       <div class="opt-group">
         <label class="opt-label">Over-linked threshold:</label>
         <select class="opt-select" id="overThreshold">
-          <option value="5">5+ inbound links</option>
-          <option value="10" selected>10+ inbound links</option>
-          <option value="15">15+ inbound links</option>
+          <option value="5">5+ inbound</option>
+          <option value="10" selected>10+ inbound</option>
+          <option value="20">20+ inbound</option>
+          <option value="50">50+ inbound</option>
         </select>
       </div>
     </div>
@@ -312,34 +321,36 @@ tr:hover td{background:var(--paper2)}
 </section>
 
 
+
 <script>
 // ── State ──────────────────────────────────────────────────────
-let crawlData = {};
+let crawlData    = {};
 let crawlResults = [];
-let isCrawling = false;
+let isCrawling   = false;
 
-// ── CORS Proxies ───────────────────────────────────────────────
+// ── Proxies (tried in order per URL) ───────────────────────────
 const PROXIES = [
-  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  u => `https://api.allorigins.win/get?url=${encodeURIComponent('https://webcache.googleusercontent.com/search?q=cache:' + u)}`,
+  u => `https://thingproxy.freeboard.io/fetch/${u}`,
 ];
 
-async function fetchViaProxy(url) {
-  for (let i = 0; i < PROXIES.length; i++) {
+async function fetchViaProxy(url, timeoutMs = 12000) {
+  for (const proxy of PROXIES) {
     try {
-      const resp = await fetch(PROXIES[i](url), { signal: AbortSignal.timeout(10000) });
+      const resp = await fetch(proxy(url), { signal: AbortSignal.timeout(timeoutMs) });
       if (!resp.ok) continue;
       const text = await resp.text();
       try {
         const json = JSON.parse(text);
-        if (json.contents && json.contents.length > 100) return json.contents;
-      } catch(e) {
-        if (text.length > 100) return text;
-      }
+        if (json.contents && json.contents.length > 200) return json.contents;
+      } catch(e) {}
+      if (text.length > 200) return text;
     } catch(e) { /* try next */ }
   }
-  throw new Error('All proxies failed');
+  throw new Error('All proxies failed for: ' + url);
 }
 
 // ── Normalise URL — consistent, no trailing slash ───────────────
@@ -353,18 +364,17 @@ function normalise(url) {
 
 // ── Extract internal links from HTML ───────────────────────────
 function extractLinks(html, baseUrl) {
-  const base = new URL(baseUrl);
+  const base  = new URL(baseUrl);
   const links = new Set();
-  const re = /href=["']([^"'>#\s][^"'>#]*)/gi;
+  const re    = /href=["']([^"'>#\s][^"'>#]*)/gi;
   let m;
   while ((m = re.exec(html)) !== null) {
     try {
       const href = m[1].trim();
-      if (!href || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) continue;
+      if (!href || /^(mailto:|tel:|javascript:|#)/.test(href)) continue;
       const abs = new URL(href, baseUrl);
       if (abs.hostname !== base.hostname) continue;
-      if (/\.(pdf|jpg|jpeg|png|gif|svg|css|js|ico|woff|woff2|zip|xml|txt|mp4|webp)$/i.test(abs.pathname)) continue;
-      // Use same normalise() function so URLs are always consistent
+      if (/\.(pdf|jpg|jpeg|png|gif|svg|css|js|ico|woff|woff2|zip|xml|txt|mp4|webp|json)$/i.test(abs.pathname)) continue;
       const clean = normalise(abs.href);
       links.add(clean);
     } catch(e) {}
@@ -372,28 +382,94 @@ function extractLinks(html, baseUrl) {
   return [...links];
 }
 
-// ── Parse sitemap.xml ──────────────────────────────────────────
-function parseSitemap(xml, origin) {
-  const urls = [];
-  const re = /<loc>\s*(https?:\/\/[^<\s]+)\s*<\/loc>/gi;
-  let m;
-  while ((m = re.exec(xml)) !== null) {
+// ── Recursive sitemap parser ────────────────────────────────────
+async function fetchAllSitemapUrls(origin, log) {
+  const allUrls = new Set();
+
+  async function parseSitemapXml(xml) {
+    // Sitemap index — contains <sitemap> entries with <loc>
+    const isIndex = xml.includes('<sitemapindex') || xml.includes('<sitemap>');
+    const locRe   = /<loc>\s*(https?:\/\/[^<\s]+)\s*<\/loc>/gi;
+    let m;
+    const locs = [];
+    while ((m = locRe.exec(xml)) !== null) locs.push(m[1].trim());
+
+    if (isIndex && xml.includes('<sitemapindex')) {
+      // It's an index — fetch each sub-sitemap
+      for (const loc of locs) {
+        if (/\.(xml|gz)$/i.test(loc)) {
+          try {
+            log('Fetching sub-sitemap: ' + loc.split('/').pop());
+            const sub = await fetchViaProxy(loc, 15000);
+            await parseSitemapXml(sub);
+          } catch(e) {}
+        }
+      }
+    } else {
+      // It's a regular sitemap — extract page URLs
+      for (const loc of locs) {
+        try {
+          const u = new URL(loc);
+          if (u.origin === origin && !/\.(xml|pdf|jpg|jpeg|png|gif|svg|css|js|gz)$/i.test(u.pathname)) {
+            allUrls.add(normalise(u.href));
+          }
+        } catch(e) {}
+      }
+    }
+  }
+
+  // Try common sitemap locations
+  const candidates = [
+    origin + '/sitemap.xml',
+    origin + '/sitemap_index.xml',
+    origin + '/sitemap-index.xml',
+    origin + '/sitemaps/sitemap.xml',
+  ];
+
+  // Also check robots.txt for Sitemap: directive
+  try {
+    const robots = await fetchViaProxy(origin + '/robots.txt', 8000);
+    const sitemapLines = robots.match(/^Sitemap:\s*(.+)$/gmi) || [];
+    for (const line of sitemapLines) {
+      const url = line.replace(/^Sitemap:\s*/i, '').trim();
+      if (url.startsWith('http')) candidates.unshift(url);
+    }
+  } catch(e) {}
+
+  for (const candidate of [...new Set(candidates)]) {
     try {
-      const u = new URL(m[1].trim());
-      if (u.origin === origin && !/\.(xml|pdf|jpg|jpeg|png|gif|svg|css|js)$/i.test(u.pathname)) {
-        urls.push(normalise(u.href));
+      log('Checking ' + candidate.split('/').pop() + '…');
+      const xml = await fetchViaProxy(candidate, 15000);
+      if (xml.includes('<url>') || xml.includes('<sitemap>') || xml.includes('<loc>')) {
+        await parseSitemapXml(xml);
+        if (allUrls.size > 0) break; // Found a good sitemap
       }
     } catch(e) {}
   }
-  return [...new Set(urls)];
+
+  return [...allUrls];
 }
 
 // ── UI helpers ──────────────────────────────────────────────────
 function setProgress(pct, status, count, logMsg) {
   document.getElementById('progressBar').style.width = pct + '%';
-  if (status !== undefined) document.getElementById('progressStatus').textContent = status;
-  if (count !== undefined) document.getElementById('progressCount').textContent = count;
-  if (logMsg !== undefined) document.getElementById('progressLog').textContent = '↳ ' + logMsg;
+  if (status  !== undefined) document.getElementById('progressStatus').textContent = status;
+  if (count   !== undefined) document.getElementById('progressCount').textContent  = count;
+  if (logMsg  !== undefined) document.getElementById('progressLog').textContent    = '↳ ' + logMsg;
+}
+
+// ── Concurrent batch fetch ──────────────────────────────────────
+async function crawlBatch(urls, origin, depth, concurrency) {
+  const results = [];
+  for (let i = 0; i < urls.length; i += concurrency) {
+    const batch = urls.slice(i, i + concurrency);
+    const settled = await Promise.allSettled(
+      batch.map(url => fetchViaProxy(url, 12000).then(html => ({ url, html, depth })))
+    );
+    results.push(...settled);
+    if (i + concurrency < urls.length) await new Promise(r => setTimeout(r, 300));
+  }
+  return results;
 }
 
 // ── Main crawl ──────────────────────────────────────────────────
@@ -406,165 +482,169 @@ async function startAudit() {
   let startUrl;
   try { startUrl = normalise(rawUrl); } catch(e) { alert('Invalid URL.'); return; }
 
-  const origin  = new URL(startUrl).origin;
-  const MAX     = parseInt(document.getElementById('maxPages').value);
-  const OVER_T  = parseInt(document.getElementById('overThreshold').value);
+  const origin      = new URL(startUrl).origin;
+  const MAX         = parseInt(document.getElementById('maxPages').value);
+  const CONCURRENCY = parseInt(document.getElementById('concurrency').value);
+  const OVER_T      = parseInt(document.getElementById('overThreshold').value);
 
-  isCrawling  = true;
-  crawlData   = {};
+  isCrawling   = true;
+  crawlData    = {};
   crawlResults = [];
-  document.getElementById('auditBtn').disabled = true;
-  document.getElementById('auditBtn').innerHTML = '⏳ Crawling…';
+  document.getElementById('auditBtn').disabled     = true;
+  document.getElementById('auditBtn').innerHTML    = '⏳ Crawling…';
   document.getElementById('progressWrap').classList.add('show');
   document.getElementById('resultsSection').classList.remove('show');
-  setProgress(2, 'Checking sitemap.xml…', '0 pages', '');
 
-  // ── Step 1: Try sitemap ────────────────────────────────────
+  const logFn = msg => setProgress(undefined, undefined, undefined, msg);
+
+  // ── Phase 1: Discover URLs via sitemap ────────────────────
+  setProgress(2, 'Discovering pages via sitemap…', '— pages', 'Checking robots.txt & sitemap…');
   let sitemapUrls = [];
   try {
-    setProgress(5, 'Fetching sitemap.xml…', '0 pages', 'Trying sitemap.xml first…');
-    const sitemapXml = await fetchViaProxy(origin + '/sitemap.xml');
-    sitemapUrls = parseSitemap(sitemapXml, origin);
-    if (sitemapUrls.length > 0) {
-      setProgress(10, `Sitemap found — ${sitemapUrls.length} URLs`, '0 pages', `Seeding ${Math.min(sitemapUrls.length, MAX)} pages from sitemap…`);
-    }
-  } catch(e) {
-    setProgress(10, 'No sitemap — starting BFS from homepage…', '0 pages', '');
+    sitemapUrls = await fetchAllSitemapUrls(origin, logFn);
+  } catch(e) {}
+
+  const totalKnown = sitemapUrls.length;
+  if (totalKnown > 0) {
+    setProgress(15, `Sitemap: ${totalKnown} pages found`, `0 / ${Math.min(totalKnown, MAX)} crawling`, `Starting crawl of up to ${MAX} pages…`);
+  } else {
+    setProgress(15, 'No sitemap — BFS crawl from homepage', '0 pages', 'Crawling from root…');
   }
+  await new Promise(r => setTimeout(r, 300));
 
-  // ── Step 2: BFS crawl ─────────────────────────────────────
-  const queue   = [];
+  // ── Phase 2: Build crawl queue ────────────────────────────
   const visited = new Set();
+  let queue = [];
 
-  // Initialise crawlData for start URL
+  // Always start with the root
   crawlData[startUrl] = { depth: 0, inbound: new Set(), outbound: [], crawled: false, status: 'root' };
+  queue.push({ url: startUrl, depth: 0 });
 
-  if (sitemapUrls.length > 0) {
-    // Seed sitemap URLs (all depth 1, except startUrl which is 0)
-    for (const u of sitemapUrls.slice(0, MAX)) {
+  if (totalKnown > 0) {
+    // Add sitemap URLs (up to MAX, depth=1, excluding start)
+    for (const u of sitemapUrls) {
       if (u === startUrl) continue;
       if (!crawlData[u]) crawlData[u] = { depth: 1, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
       queue.push({ url: u, depth: 1 });
+      if (queue.length >= MAX + 5) break;
     }
-    queue.unshift({ url: startUrl, depth: 0 }); // Start URL crawled first
-  } else {
-    queue.push({ url: startUrl, depth: 0 });
   }
 
-  let errors = 0;
+  // Deduplicate queue
+  const seenQ = new Set();
+  queue = queue.filter(item => seenQ.has(item.url) ? false : (seenQ.add(item.url), true));
+
+  // ── Phase 3: Crawl in batches ─────────────────────────────
   let crawledCount = 0;
+  let errors       = 0;
 
   while (queue.length > 0 && crawledCount < MAX) {
-    const { url, depth } = queue.shift();
-    if (visited.has(url)) continue;
-    visited.add(url);
+    // Take next batch
+    const batch     = queue.splice(0, CONCURRENCY).filter(item => !visited.has(item.url));
+    const batchUrls = batch.map(b => b.url);
+    batchUrls.forEach(u => visited.add(u));
+    if (batch.length === 0) continue;
 
-    if (!crawlData[url]) crawlData[url] = { depth, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
-    crawlData[url].depth = depth;
+    const pct = Math.round(15 + (crawledCount / MAX) * 83);
+    setProgress(
+      pct,
+      `Crawling ${crawledCount + 1}–${Math.min(crawledCount + batch.length, MAX)} of ${Math.min(seenQ.size, MAX)}…`,
+      `${crawledCount} / ${Math.min(seenQ.size, MAX)} pages`,
+      batchUrls.map(u => u.replace(origin, '') || '/').join(', ')
+    );
 
-    const pct = Math.round(10 + (crawledCount / MAX) * 88);
-    const shortUrl = url.replace(origin, '') || '/';
-    setProgress(pct, `Crawling page ${crawledCount + 1}…`, `${crawledCount} / ${Math.min(queue.length + crawledCount + 1, MAX)} pages`, shortUrl);
+    const settled = await Promise.allSettled(
+      batch.map(({ url, depth }) =>
+        fetchViaProxy(url, 12000).then(html => ({ url, html, depth }))
+      )
+    );
 
-    try {
-      const html  = await fetchViaProxy(url);
-      const links = extractLinks(html, url);
-      crawlData[url].outbound = links;
-      crawlData[url].crawled  = true;
-      crawledCount++;
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        const { url, html, depth } = result.value;
+        if (!crawlData[url]) crawlData[url] = { depth, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
+        const links = extractLinks(html, url);
+        crawlData[url].outbound = links;
+        crawlData[url].crawled  = true;
+        crawlData[url].depth    = depth;
+        crawledCount++;
 
-      // Only add inbound links from pages we actually crawled
-      for (const link of links) {
-        if (link === url) continue; // skip self-links
-        if (!crawlData[link]) crawlData[link] = { depth: depth + 1, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
-        crawlData[link].inbound.add(url); // Track which crawled page links here
-        // Add to queue only if within same origin and not yet visited
-        if (!visited.has(link) && !queue.find(q => q.url === link)) {
-          queue.push({ url: link, depth: depth + 1 });
+        // Update inbound for linked pages & discover new URLs
+        for (const link of links) {
+          if (link === url) continue;
+          if (!crawlData[link]) crawlData[link] = { depth: depth + 1, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
+          crawlData[link].inbound.add(url);
+          // Add to queue if not visited and not already queued
+          if (!visited.has(link) && !seenQ.has(link) && crawledCount + queue.length < MAX * 2) {
+            queue.push({ url: link, depth: depth + 1 });
+            seenQ.add(link);
+          }
         }
+      } else {
+        const url   = batch[settled.indexOf(result)]?.url || '';
+        if (url) {
+          if (!crawlData[url]) crawlData[url] = { depth: 1, inbound: new Set(), outbound: [], crawled: false, status: 'ok' };
+          crawlData[url].crawled = false;
+        }
+        errors++;
+        crawledCount++;
       }
-    } catch(e) {
-      errors++;
-      crawlData[url].crawled = false;
-      crawlData[url].status  = 'uncrawled';
-      crawledCount++; // Count as attempted
-      setProgress(pct, `Crawling…`, `${crawledCount} / ${Math.min(queue.length + crawledCount, MAX)} pages`, `⚠ Blocked: ${shortUrl}`);
     }
 
-    await new Promise(r => setTimeout(r, 180));
+    await new Promise(r => setTimeout(r, 150));
   }
 
-  // Check if basically nothing was crawled
-  const actualCrawled = Object.values(crawlData).filter(d => d.crawled).length;
-  if (actualCrawled <= 1 && errors > 0) {
-    document.getElementById('progressStatus').innerHTML =
-      '⚠ <strong>This site blocks external crawlers.</strong> Try a WordPress blog, portfolio, or docs site instead.';
-    setProgress(100, '', errors + ' pages blocked', '');
-    isCrawling = false;
-    document.getElementById('auditBtn').disabled = false;
-    document.getElementById('auditBtn').innerHTML = '<span>🔍</span> Start Audit';
-    return;
-  }
-
-  // ── Build results ──────────────────────────────────────────
-  setProgress(100, 'Building report…', crawledCount + ' pages crawled', 'Analysing link structure…');
+  // ── Phase 4: Build results ────────────────────────────────
+  setProgress(100, 'Building report…', crawledCount + ' attempted', 'Analysing link structure…');
   await new Promise(r => setTimeout(r, 400));
 
   crawlResults = [];
   for (const [url, d] of Object.entries(crawlData)) {
-    const inCount  = d.inbound.size;  // Only counts inbound from crawled pages
+    const inCount  = d.inbound.size;
     const outCount = d.outbound.length;
-    let status = d.status;
+    let status = 'ok';
 
-    if (!d.crawled && status !== 'root') {
-      status = 'uncrawled';
-    } else if (url === startUrl) {
-      status = 'root';
-    } else if (!d.crawled) {
-      status = 'uncrawled';
-    } else if (inCount === 0) {
-      status = 'orphan';
-    } else if (inCount >= OVER_T) {
-      status = 'over';
-    } else {
-      status = 'ok';
-    }
+    if (url === startUrl)   status = 'root';
+    else if (!d.crawled)    status = 'uncrawled';
+    else if (inCount === 0) status = 'orphan';
+    else if (inCount >= OVER_T) status = 'over';
 
     crawlResults.push({ url, depth: d.depth, inbound: inCount, outbound: outCount, status, crawled: d.crawled });
   }
 
-  renderResults(OVER_T);
+  renderResults(OVER_T, totalKnown);
   isCrawling = false;
-  document.getElementById('auditBtn').disabled = false;
+  document.getElementById('auditBtn').disabled  = false;
   document.getElementById('auditBtn').innerHTML = '<span>🔍</span> Start Audit';
   document.getElementById('progressWrap').classList.remove('show');
 }
 
 // ── Render results ──────────────────────────────────────────────
-function renderResults(overT) {
+function renderResults(overT, totalKnown) {
   const all       = crawlResults;
   const crawled   = all.filter(r => r.crawled || r.status === 'root');
-  const orphan    = all.filter(r => r.status === 'orphan');
-  const over      = all.filter(r => r.status === 'over');
+  const orphan    = crawled.filter(r => r.status === 'orphan');
+  const over      = crawled.filter(r => r.status === 'over');
   const deep      = crawled.filter(r => r.depth >= 3);
   const uncrawled = all.filter(r => r.status === 'uncrawled');
 
   const avgDepth = crawled.length
-    ? (crawled.reduce((a, r) => a + r.depth, 0) / crawled.length).toFixed(1)
-    : 0;
+    ? (crawled.reduce((a, r) => a + r.depth, 0) / crawled.length).toFixed(1) : 0;
+
+  const coverage = totalKnown > 0 ? Math.round((crawled.length / totalKnown) * 100) + '%' : '—';
 
   document.getElementById('summaryGrid').innerHTML = `
-    <div class="sum-card"><div class="sum-num teal">${crawled.length}</div><div class="sum-label">Pages Crawled</div></div>
+    <div class="sum-card"><div class="sum-num teal">${totalKnown || all.length}</div><div class="sum-label">Pages Found</div></div>
+    <div class="sum-card"><div class="sum-num ok">${crawled.length}</div><div class="sum-label">Crawled (${coverage})</div></div>
     <div class="sum-card"><div class="sum-num warn">${orphan.length}</div><div class="sum-label">Orphan Pages</div></div>
     <div class="sum-card"><div class="sum-num accent">${over.length}</div><div class="sum-label">Over-linked</div></div>
-    <div class="sum-card"><div class="sum-num ok">${avgDepth}</div><div class="sum-label">Avg Depth</div></div>
-    ${uncrawled.length ? `<div class="sum-card"><div class="sum-num" style="color:#888">${uncrawled.length}</div><div class="sum-label">Not Crawled</div></div>` : ''}
+    <div class="sum-card"><div class="sum-num" style="color:#888">${avgDepth}</div><div class="sum-label">Avg Depth</div></div>
   `;
 
-  document.getElementById('allTitle').textContent        = `All Pages (${all.length})`;
-  document.getElementById('orphanTitle').textContent     = `Orphan Pages (${orphan.length})`;
-  document.getElementById('overTitle').textContent       = `Over-linked Pages (${over.length})`;
-  document.getElementById('deepTitle').textContent       = `Deep Pages ≥3 (${deep.length})`;
+  document.getElementById('allTitle').textContent    = `All Pages (${all.length})`;
+  document.getElementById('orphanTitle').textContent = `Orphan Pages (${orphan.length})`;
+  document.getElementById('overTitle').textContent   = `Over-linked (${over.length})`;
+  document.getElementById('deepTitle').textContent   = `Deep Pages ≥3 (${deep.length})`;
 
   fillTableAll(all);
   fillTableOrphan(orphan);
@@ -575,124 +655,78 @@ function renderResults(overT) {
   document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function statusBadge(status) {
-  const map = {
-    root:      ['🏠 Root',       'root'],
-    ok:        ['✓ OK',          'ok'],
-    orphan:    ['⚠ Orphan',      'orphan'],
-    over:      ['🔥 Over-linked','over'],
-    uncrawled: ['— Not crawled', 'uncrawled'],
+function statusBadge(s) {
+  const m = {
+    root:      ['🏠 Root',        'root'],
+    ok:        ['✓ OK',           'ok'],
+    orphan:    ['⚠ Orphan',       'orphan'],
+    over:      ['🔥 Over-linked', 'over'],
+    uncrawled: ['— Not crawled',  'uncrawled'],
   };
-  const [label, cls] = map[status] || ['—', 'ok'];
+  const [label, cls] = m[s] || ['—', 'ok'];
   return `<span class="badge ${cls}">${label}</span>`;
 }
-
-function depthCell(depth) {
-  const w = Math.min(depth * 18, 80);
-  return `<span class="depth-dot"><span class="depth-bar" style="width:${w}px"></span>${depth}</span>`;
+function depthCell(d) {
+  return `<span class="depth-dot"><span class="depth-bar" style="width:${Math.min(d*18,80)}px"></span>${d}</span>`;
 }
-
 function urlCell(url) {
   const short = url.replace(/^https?:\/\/[^/]+/, '') || '/';
   return `<span class="url-cell" title="${url}"><a href="${url}" target="_blank" rel="noopener">${short}</a></span>`;
 }
-
 function fillTableAll(rows) {
   document.getElementById('bodyAll').innerHTML = rows.length
-    ? rows.map(r => `<tr>
-        <td>${urlCell(r.url)}</td>
-        <td>${depthCell(r.depth)}</td>
-        <td><strong>${r.inbound}</strong></td>
-        <td>${r.outbound}</td>
-        <td>${statusBadge(r.status)}</td>
-      </tr>`).join('')
+    ? rows.map(r=>`<tr><td>${urlCell(r.url)}</td><td>${depthCell(r.depth)}</td><td><strong>${r.inbound}</strong></td><td>${r.outbound}</td><td>${statusBadge(r.status)}</td></tr>`).join('')
     : emptyRow(5);
 }
 function fillTableOrphan(rows) {
   document.getElementById('bodyOrphan').innerHTML = rows.length
-    ? rows.map(r => `<tr>
-        <td>${urlCell(r.url)}</td>
-        <td>${depthCell(r.depth)}</td>
-        <td>${r.outbound}</td>
-        <td>${statusBadge(r.status)}</td>
-      </tr>`).join('')
-    : emptyRow(4, '🎉 No orphan pages found!');
+    ? rows.map(r=>`<tr><td>${urlCell(r.url)}</td><td>${depthCell(r.depth)}</td><td>${r.outbound}</td><td>${statusBadge(r.status)}</td></tr>`).join('')
+    : emptyRow(4,'🎉 No orphan pages found!');
 }
 function fillTableOver(rows) {
   document.getElementById('bodyOver').innerHTML = rows.length
-    ? rows.map(r => `<tr>
-        <td>${urlCell(r.url)}</td>
-        <td>${depthCell(r.depth)}</td>
-        <td><strong>${r.inbound}</strong></td>
-        <td>${r.outbound}</td>
-        <td>${statusBadge(r.status)}</td>
-      </tr>`).join('')
-    : emptyRow(5, '✅ No over-linked pages found!');
+    ? rows.map(r=>`<tr><td>${urlCell(r.url)}</td><td>${depthCell(r.depth)}</td><td><strong>${r.inbound}</strong></td><td>${r.outbound}</td><td>${statusBadge(r.status)}</td></tr>`).join('')
+    : emptyRow(5,'✅ No over-linked pages found!');
 }
 function fillTableDeep(rows) {
   document.getElementById('bodyDeep').innerHTML = rows.length
-    ? rows.map(r => `<tr>
-        <td>${urlCell(r.url)}</td>
-        <td>${depthCell(r.depth)}</td>
-        <td>${r.inbound}</td>
-        <td>${r.outbound}</td>
-        <td>${statusBadge(r.status)}</td>
-      </tr>`).join('')
-    : emptyRow(5, '✅ No deep pages found!');
+    ? rows.map(r=>`<tr><td>${urlCell(r.url)}</td><td>${depthCell(r.depth)}</td><td>${r.inbound}</td><td>${r.outbound}</td><td>${statusBadge(r.status)}</td></tr>`).join('')
+    : emptyRow(5,'✅ No deep pages found!');
 }
-function emptyRow(cols, msg = 'No data available.') {
+function emptyRow(cols, msg='No data available.') {
   return `<tr><td colspan="${cols}" style="text-align:center;padding:2rem;color:var(--ink3);font-size:.85rem;">${msg}</td></tr>`;
 }
-
-// ── Tabs ────────────────────────────────────────────────────────
 function switchTab(name, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
 }
-
-// ── Sort ────────────────────────────────────────────────────────
 const sortState = {};
 function sortTable(tableId, col) {
   const tbody = document.getElementById(tableId).querySelector('tbody');
   const rows  = [...tbody.querySelectorAll('tr')];
-  const key   = tableId + col;
+  const key   = tableId+col;
   sortState[key] = !sortState[key];
-  const asc = sortState[key];
-  rows.sort((a, b) => {
-    const av = a.cells[col]?.textContent.trim() || '';
-    const bv = b.cells[col]?.textContent.trim() || '';
-    const an = parseFloat(av), bn = parseFloat(bv);
-    if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
-    return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  rows.sort((a,b)=>{
+    const av=a.cells[col]?.textContent.trim()||'', bv=b.cells[col]?.textContent.trim()||'';
+    const an=parseFloat(av), bn=parseFloat(bv);
+    if (!isNaN(an)&&!isNaN(bn)) return sortState[key]?an-bn:bn-an;
+    return sortState[key]?av.localeCompare(bv):bv.localeCompare(av);
   });
-  rows.forEach(r => tbody.appendChild(r));
+  rows.forEach(r=>tbody.appendChild(r));
 }
-
-// ── CSV Export ──────────────────────────────────────────────────
 function exportCSV(tab) {
-  const sets = {
-    all:    crawlResults,
-    orphan: crawlResults.filter(r => r.status === 'orphan'),
-    over:   crawlResults.filter(r => r.status === 'over'),
-    deep:   crawlResults.filter(r => r.depth >= 3 && r.crawled),
-  };
-  const rows = sets[tab] || crawlResults;
-  if (!rows.length) { alert('No data to export.'); return; }
-  const header = 'URL,Depth,Inbound Links,Outbound Links,Status,Crawled';
-  const lines  = rows.map(r => `"${r.url}",${r.depth},${r.inbound},${r.outbound},${r.status},${r.crawled}`);
-  const csv    = [header, ...lines].join('\n');
-  const blob   = new Blob([csv], { type: 'text/csv' });
-  const a      = document.createElement('a');
-  a.href       = URL.createObjectURL(blob);
-  a.download   = `link-audit-${tab}-${Date.now()}.csv`;
+  const sets={all:crawlResults,orphan:crawlResults.filter(r=>r.status==='orphan'),over:crawlResults.filter(r=>r.status==='over'),deep:crawlResults.filter(r=>r.depth>=3&&r.crawled)};
+  const rows=sets[tab]||crawlResults;
+  if(!rows.length){alert('No data to export.');return;}
+  const csv=['URL,Depth,Inbound Links,Outbound Links,Status,Crawled',...rows.map(r=>`"${r.url}",${r.depth},${r.inbound},${r.outbound},${r.status},${r.crawled}`)].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`link-audit-${tab}-${Date.now()}.csv`;
   a.click();
 }
-
-document.getElementById('urlInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') startAudit();
-});
+document.getElementById('urlInput').addEventListener('keydown',e=>{if(e.key==='Enter')startAudit();});
 </script>
 
 </body>
